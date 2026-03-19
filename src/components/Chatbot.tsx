@@ -36,7 +36,7 @@ export default function Chatbot() {
       if (isFastMode) {
         responseText = await chatWithFlashLite(userMsg);
       } else {
-        responseText = await chatWithPro(userMsg, messages);
+        responseText = await chatWithPro(userMsg, messages.map(m => ({ role: m.role, parts: [{ text: m.text }] })));
       }
       setMessages(prev => [...prev, { role: 'model', text: responseText }]);
     } catch (error: any) {
