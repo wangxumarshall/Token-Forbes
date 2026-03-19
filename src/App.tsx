@@ -14,24 +14,82 @@ import Chatbot from './components/Chatbot';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import GitHubRepoIntake from './components/GitHubRepoIntake';
 import { allMockEntities, Entity } from './data/mockData';
-import { collection, onSnapshot } from 'firebase/firestore';
-import { db } from './firebase';
+import {
+  LEADERBOARD_DATA_UPDATED_EVENT,
+  fetchGlobalGitHubSnapshot,
+  fetchLeaderboardSnapshot,
+} from './services/leaderboardStore';
+import type { GlobalGitHubSnapshot, StoredGitHubRanking, StoredProof } from './types/storage';
+import { normalizeAvatarUrl } from './utils/avatar';
+import { createEraTokenMetricsFromMonthlyBurn, normalizeTokenMetrics } from './utils/tokenMath';
 import clsx from 'clsx';
+
+const EMPTY_GLOBAL_SNAPSHOT: GlobalGitHubSnapshot = {
+  generatedAt: '',
+  individuals: [],
+  enterprises: [],
+  methodology: [],
+  repoCount: 0,
+  contributorCount: 0,
+};
+
+function getEntityKey(entity: Entity) {
+  if (entity.sourceTag === 'Public GitHub Proxy') {
+    return `${entity.entityType}:${entity.name.toLowerCase()}`;
+  }
+
+  if (entity.entityType === 'individual' && entity.company.toLowerCase() === 'independent') {
+    return `proof:${entity.name.toLowerCase()}`;
+  }
+
+  return entity.id;
+}
+
+function mergeGitHubEntity(existing: Entity, incoming: Entity) {
+  return incoming.totalTokens >= existing.totalTokens ? incoming : existing;
+}
 
 export default function App() {
   const [leaderboardData, setLeaderboardData] = useState<Entity[]>([]);
   const [activeTab, setActiveTab] = useState<'individual' | 'enterprise'>('individual');
 
   useEffect(() => {
-    const baseEntities = [...allMockEntities];
-    let proofDocs: any[] = [];
-    let githubDocs: any[] = [];
-
-    const rebuildLeaderboard = () => {
+    const baseEntities = [...allMockEntities].map((entity) => normalizeTokenMetrics({ ...entity }));
+    
+    const rebuildLeaderboard = (
+      proofDocs: StoredProof[],
+      githubDocs: StoredGitHubRanking[],
+      globalSnapshot: GlobalGitHubSnapshot,
+    ) => {
       const mergedMap = new Map<string, Entity>();
+      const upsertEntity = (entity: Entity) => {
+        const normalizedEntity = normalizeTokenMetrics({ ...entity });
+        const key = getEntityKey(normalizedEntity);
+        const existing = mergedMap.get(key);
+
+        if (!existing) {
+          mergedMap.set(key, normalizedEntity);
+          return;
+        }
+
+        if (existing.sourceTag === 'Public GitHub Proxy' && normalizedEntity.sourceTag === 'Public GitHub Proxy') {
+          mergedMap.set(key, mergeGitHubEntity(existing, normalizedEntity));
+          return;
+        }
+
+        mergedMap.set(key, normalizedEntity);
+      };
 
       for (const entity of baseEntities) {
-        mergedMap.set(entity.id, { ...entity });
+        upsertEntity(entity);
+      }
+
+      for (const entity of globalSnapshot.individuals) {
+        upsertEntity(entity);
+      }
+
+      for (const entity of globalSnapshot.enterprises) {
+        upsertEntity(entity);
       }
 
       for (const ranking of githubDocs) {
@@ -39,30 +97,25 @@ export default function App() {
         const individualEntities = (ranking.individualEntities || []) as Entity[];
 
         if (enterpriseEntity) {
-          mergedMap.set(enterpriseEntity.id, { ...enterpriseEntity });
+          upsertEntity(enterpriseEntity);
         }
 
         for (const entity of individualEntities) {
-          mergedMap.set(entity.id, { ...entity });
+          upsertEntity(entity);
         }
       }
 
       for (const proof of proofDocs) {
-        const matchingEntry = Array.from(mergedMap.values()).find(
-          (entity) =>
-            entity.entityType === 'individual' &&
-            entity.name.toLowerCase() === proof.name?.toLowerCase() &&
-            entity.company.toLowerCase() === 'independent',
-        );
+        const proofName = proof.name?.trim() || 'Unknown';
+        const proofKey = `proof:${proofName.toLowerCase()}`;
+        const matchingEntry = mergedMap.get(proofKey);
+        const addedMonthlyTokens = proof.tokens || 0;
 
         if (matchingEntry) {
-          const addedTokens = proof.tokens || 0;
-          mergedMap.set(matchingEntry.id, {
+          const mergedMetrics = createEraTokenMetricsFromMonthlyBurn(matchingEntry.tokensPerMonth + addedMonthlyTokens);
+          mergedMap.set(proofKey, {
             ...matchingEntry,
-            totalTokens: matchingEntry.totalTokens + addedTokens,
-            tokensPerMonth: matchingEntry.tokensPerMonth + addedTokens,
-            tokensPerYear: matchingEntry.tokensPerYear + addedTokens * 12,
-            tokensPerDay: matchingEntry.tokensPerDay + addedTokens / 30,
+            ...mergedMetrics,
             lastUpdated: new Date().toISOString().split('T')[0],
           });
           continue;
@@ -70,21 +123,20 @@ export default function App() {
 
         const tokens = proof.tokens || 0;
         let categoryLabel = 'Token Enthusiast';
-        if (tokens >= 1e12) categoryLabel = 'Compute Giant';
+        if (tokens >= 5e9) categoryLabel = 'Token Billionaire';
         else if (tokens >= 1e9) categoryLabel = 'Enterprise Whale';
-        else if (tokens >= 1e6) categoryLabel = 'Super Geek';
+        else if (tokens >= 1e8) categoryLabel = 'Super Geek';
+
+        const proofMetrics = createEraTokenMetricsFromMonthlyBurn(tokens);
 
         const proofEntity: Entity = {
           id: proof.userId || Math.random().toString(),
           rank: 0,
-          name: proof.name || 'Unknown',
+          name: proofName,
           title: categoryLabel,
           company: 'Independent',
-          avatar: proof.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${proof.name}`,
-          totalTokens: tokens,
-          tokensPerDay: tokens / 30,
-          tokensPerMonth: tokens,
-          tokensPerYear: tokens * 12,
+          avatar: normalizeAvatarUrl(proof.photoURL, proofName),
+          ...proofMetrics,
           confidenceInterval: 0,
           sourceTag: 'Direct Disclosure',
           updateFrequency: 'Real-time',
@@ -92,56 +144,56 @@ export default function App() {
           nextUpdate: 'Real-time',
           entityType: 'individual',
           wealthStructure: [{ name: 'Submitted Compute', value: 100 }],
-          description: 'User submitted proof of compute.',
+          description: 'User submitted average monthly compute consumption, converted into a cumulative total since January 2025.',
         };
 
-        mergedMap.set(proofEntity.id, proofEntity);
+        mergedMap.set(proofKey, proofEntity);
       }
 
       const mergedEntities = Array.from(mergedMap.values()).sort((a, b) => b.totalTokens - a.totalTokens);
       setLeaderboardData(mergedEntities);
     };
 
-    const unsubscribeProofs = onSnapshot(
-      collection(db, 'proofs'),
-      (snapshot) => {
-        proofDocs = snapshot.docs.map((doc) => doc.data());
-        rebuildLeaderboard();
-      },
-      (error) => {
-        console.error('Error fetching proofs:', error);
-        rebuildLeaderboard();
-      },
-    );
+    const refreshLeaderboard = async () => {
+      try {
+        const [snapshot, globalSnapshot] = await Promise.all([
+          fetchLeaderboardSnapshot(),
+          fetchGlobalGitHubSnapshot(),
+        ]);
+        rebuildLeaderboard(snapshot.proofs, snapshot.githubRankings, globalSnapshot);
+      } catch (error) {
+        console.error('Error fetching leaderboard snapshot:', error);
+        rebuildLeaderboard([], [], EMPTY_GLOBAL_SNAPSHOT);
+      }
+    };
 
-    const unsubscribeGitHubRankings = onSnapshot(
-      collection(db, 'github_rankings'),
-      (snapshot) => {
-        githubDocs = snapshot.docs.map((doc) => doc.data());
-        rebuildLeaderboard();
-      },
-      (error) => {
-        console.error('Error fetching GitHub rankings:', error);
-        rebuildLeaderboard();
-      },
-    );
+    void refreshLeaderboard();
 
-    rebuildLeaderboard();
+    const intervalId = window.setInterval(() => {
+      void refreshLeaderboard();
+    }, 60_000);
+
+    const handleDataUpdate = () => {
+      void refreshLeaderboard();
+    };
+
+    window.addEventListener(LEADERBOARD_DATA_UPDATED_EVENT, handleDataUpdate);
 
     return () => {
-      unsubscribeProofs();
-      unsubscribeGitHubRankings();
+      window.clearInterval(intervalId);
+      window.removeEventListener(LEADERBOARD_DATA_UPDATED_EVENT, handleDataUpdate);
     };
   }, []);
 
   const filteredData = leaderboardData
     .filter(entity => entity.entityType === activeTab)
     .map((entity, index) => ({ ...entity, rank: index + 1 }));
+  const tickerData = leaderboardData.filter((entity) => entity.entityType === 'individual').slice(0, 10);
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white font-sans selection:bg-[#D4AF37] selection:text-black">
       <Header />
-      <HeroTicker />
+      <HeroTicker data={tickerData} />
       
       <main>
         {/* Hero Section */}
@@ -150,7 +202,7 @@ export default function App() {
             The New <span className="text-[#D4AF37] italic">Digital Oil</span>
           </h1>
           <p className="text-gray-400 text-lg md:text-xl max-w-3xl mx-auto leading-relaxed">
-            In the AI era, tokens and compute have replaced traditional physical resources as the absolute measure of influence. Welcome to the Global AI Token Consumption Leaderboard.
+            In the AI era, tokens and compute have replaced traditional physical resources as the absolute measure of influence. Rankings now track cumulative burn since January 2025 and the average monthly burn rate behind it.
           </p>
         </section>
 

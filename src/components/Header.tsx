@@ -1,8 +1,13 @@
-import { Cpu, LogOut, AlertCircle, Loader2 } from 'lucide-react';
+import { Cpu, LogOut, AlertCircle, Loader2, Github } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function Header() {
-  const { currentUser, login, logout, error, isLoggingIn } = useAuth();
+  const { currentUser, login, logout, error, isLoggingIn, activeProvider } = useAuth();
+  const displayName =
+    currentUser?.displayName ||
+    currentUser?.providerData.find((item) => item.displayName)?.displayName ||
+    currentUser?.email ||
+    'Signed in';
 
   return (
     <>
@@ -26,12 +31,12 @@ export default function Header() {
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
                   <img 
-                    src={currentUser.photoURL || `https://ui-avatars.com/api/?name=${currentUser.displayName || 'User'}&background=D4AF37&color=000`} 
+                    src={currentUser.photoURL || `https://ui-avatars.com/api/?name=${displayName || 'User'}&background=D4AF37&color=000`} 
                     alt="Profile" 
                     className="w-8 h-8 rounded-full border border-[#D4AF37]/50"
                     referrerPolicy="no-referrer"
                   />
-                  <span className="text-white text-sm">{currentUser.displayName}</span>
+                  <span className="text-white text-sm">{displayName}</span>
                 </div>
                 <button 
                   onClick={logout}
@@ -42,14 +47,24 @@ export default function Header() {
                 </button>
               </div>
             ) : (
-              <button 
-                onClick={login}
-                disabled={isLoggingIn}
-                className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-white transition-colors text-xs font-bold uppercase tracking-wider disabled:opacity-50 flex items-center gap-2"
-              >
-                {isLoggingIn && <Loader2 className="w-3 h-3 animate-spin" />}
-                {isLoggingIn ? 'Signing In...' : 'Sign In'}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => login('github')}
+                  disabled={isLoggingIn}
+                  className="px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-white transition-colors text-xs font-bold uppercase tracking-wider disabled:opacity-50 flex items-center gap-2"
+                >
+                  {isLoggingIn && activeProvider === 'github' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Github className="w-3 h-3" />}
+                  {isLoggingIn && activeProvider === 'github' ? 'Connecting...' : 'GitHub'}
+                </button>
+                <button
+                  onClick={() => login('google')}
+                  disabled={isLoggingIn}
+                  className="px-3 py-2 bg-[#D4AF37] hover:bg-[#b8952b] rounded-lg text-black transition-colors text-xs font-bold uppercase tracking-wider disabled:opacity-50 flex items-center gap-2"
+                >
+                  {isLoggingIn && activeProvider === 'google' && <Loader2 className="w-3 h-3 animate-spin" />}
+                  {isLoggingIn && activeProvider === 'google' ? 'Connecting...' : 'Google'}
+                </button>
+              </div>
             )}
           </nav>
         </div>

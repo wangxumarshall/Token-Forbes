@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import { Database, Github, Link2, Loader2, Save, Sparkles } from 'lucide-react';
-import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
-import { db, auth } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { evaluateGitHubRepo, GitHubRepoEvaluation } from '../services/githubRankingService';
+import { saveGitHubRanking } from '../services/leaderboardStore';
 import { formatNumber, formatTokens } from '../utils/format';
+import { normalizeAvatarUrl } from '../utils/avatar';
 
 export default function GitHubRepoIntake() {
   const [repoUrl, setRepoUrl] = useState('');
@@ -14,10 +14,10 @@ export default function GitHubRepoIntake() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [evaluation, setEvaluation] = useState<GitHubRepoEvaluation | null>(null);
-  const { currentUser, login, isLoggingIn } = useAuth();
+  const { currentUser, login, isLoggingIn, activeProvider } = useAuth();
 
-  const totalYearlyTokens = useMemo(
-    () => evaluation?.individualEntities.reduce((sum, entity) => sum + entity.tokensPerYear, 0) ?? 0,
+  const totalTokens = useMemo(
+    () => evaluation?.individualEntities.reduce((sum, entity) => sum + entity.totalTokens, 0) ?? 0,
     [evaluation],
   );
 
@@ -48,30 +48,27 @@ export default function GitHubRepoIntake() {
     setIsSaving(true);
 
     try {
-      if (!auth.currentUser) {
-        await login();
-      }
-
-      if (!auth.currentUser) {
-        throw new Error('Sign in is required before saving to the leaderboard database.');
-      }
-
       const docId = evaluation.repo.fullName.replace('/', '__').toLowerCase();
-      await setDoc(doc(db, 'github_rankings', docId), {
+      const provider = await saveGitHubRanking({
+        docId,
         repo: evaluation.repo,
         enterpriseEntity: evaluation.enterpriseEntity,
         individualEntities: evaluation.individualEntities,
         methodology: evaluation.methodology,
-        updatedAt: serverTimestamp(),
-        updatedBy: {
-          uid: auth.currentUser.uid,
-          displayName: auth.currentUser.displayName,
-          email: auth.currentUser.email,
-          photoURL: auth.currentUser.photoURL,
-        },
+        updatedBy: currentUser
+          ? {
+              uid: currentUser.uid,
+              displayName: currentUser.displayName,
+              photoURL: currentUser.photoURL,
+            }
+          : undefined,
       });
 
-      setSuccess(`Saved ${evaluation.repo.fullName} contributor ranking to Firestore.`);
+      setSuccess(
+        provider === 'vercel-blob'
+          ? `Saved ${evaluation.repo.fullName} contributor ranking to the live leaderboard database.`
+          : `Saved ${evaluation.repo.fullName} contributor ranking to local browser storage.`,
+      );
     } catch (err: any) {
       setError(err.message || 'Failed to save repository ranking.');
     } finally {
@@ -87,7 +84,7 @@ export default function GitHubRepoIntake() {
             GitHub <span className="text-[#D4AF37] italic">Repo Intake</span>
           </h2>
           <p className="text-gray-400 text-lg leading-relaxed">
-            Paste any public GitHub repository URL. We convert contributor commits, additions, and deletions into a public AI coding token leaderboard, then optionally sync it into Firestore.
+            Paste any public GitHub repository URL. We convert the last 30 days of contributor commits, additions, and deletions into an AI coding leaderboard, then optionally sync it into the live database.
           </p>
         </div>
 
@@ -108,7 +105,7 @@ export default function GitHubRepoIntake() {
                 />
               </div>
               <p className="text-xs text-gray-500 mt-3">
-                Uses GitHub REST stats endpoints. Large repos may take a few seconds while GitHub computes contributor aggregates.
+                Uses GitHub REST contributor stats. Large repos may take a few seconds while GitHub computes fresh aggregates.
               </p>
             </div>
 
@@ -154,7 +151,7 @@ export default function GitHubRepoIntake() {
                   <div className="flex items-start justify-between gap-4 mb-6">
                     <div className="flex items-center gap-4">
                       <img
-                        src={evaluation.repo.ownerAvatar}
+                        src={normalizeAvatarUrl(evaluation.repo.ownerAvatar, evaluation.repo.owner)}
                         alt={evaluation.repo.owner}
                         className="w-14 h-14 rounded-2xl border border-white/10 object-cover"
                         referrerPolicy="no-referrer"
@@ -189,7 +186,7 @@ export default function GitHubRepoIntake() {
                       ) : (
                         <>
                           <Save className="w-4 h-4" />
-                          {currentUser ? 'Save to Firestore' : 'Sign in & Save'}
+                          Save to Leaderboard
                         </>
                       )}
                     </button>
@@ -201,8 +198,8 @@ export default function GitHubRepoIntake() {
                       <div className="text-xl font-mono text-white">{evaluation.individualEntities.length}</div>
                     </div>
                     <div className="bg-[#111] rounded-2xl border border-white/5 p-4">
-                      <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Yearly Tokens</div>
-                      <div className="text-xl font-mono text-[#D4AF37]">{formatTokens(totalYearlyTokens)}</div>
+                      <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Total Since Jan 2025</div>
+                      <div className="text-xl font-mono text-[#D4AF37]">{formatTokens(totalTokens)}</div>
                     </div>
                     <div className="bg-[#111] rounded-2xl border border-white/5 p-4">
                       <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Stars</div>
@@ -225,6 +222,30 @@ export default function GitHubRepoIntake() {
                       <li key={step}>{step}</li>
                     ))}
                   </ol>
+                  {!currentUser && (
+                    <div className="mt-4 flex flex-wrap gap-3">
+                      <button
+                        type="button"
+                        onClick={() => login('github')}
+                        disabled={isLoggingIn}
+                        className="text-xs text-[#D4AF37] hover:text-[#f1d77a] transition-colors disabled:opacity-50"
+                      >
+                        {isLoggingIn && activeProvider === 'github'
+                          ? 'Connecting GitHub…'
+                          : 'Attribute saved audits with GitHub'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => login('google')}
+                        disabled={isLoggingIn}
+                        className="text-xs text-gray-400 hover:text-white transition-colors disabled:opacity-50"
+                      >
+                        {isLoggingIn && activeProvider === 'google'
+                          ? 'Connecting Google…'
+                          : 'or use Google'}
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -232,8 +253,8 @@ export default function GitHubRepoIntake() {
                 <div className="grid grid-cols-12 gap-4 px-6 py-4 border-b border-white/5 text-[11px] font-mono uppercase tracking-[0.25em] text-gray-500">
                   <div className="col-span-1">#</div>
                   <div className="col-span-4">Contributor</div>
-                  <div className="col-span-3 text-right">Yearly Tokens</div>
-                  <div className="col-span-2 text-right">Monthly</div>
+                  <div className="col-span-3 text-right">Total Since Jan 2025</div>
+                  <div className="col-span-2 text-right">Avg Monthly</div>
                   <div className="col-span-2 text-right">Confidence</div>
                 </div>
                 <div className="divide-y divide-white/5">
@@ -242,7 +263,7 @@ export default function GitHubRepoIntake() {
                       <div className="col-span-1 font-serif text-xl text-gray-500">{entity.rank}</div>
                       <div className="col-span-4 flex items-center gap-3">
                         <img
-                          src={entity.avatar}
+                          src={normalizeAvatarUrl(entity.avatar, entity.name)}
                           alt={entity.name}
                           className="w-11 h-11 rounded-full border border-white/10 object-cover"
                           referrerPolicy="no-referrer"
@@ -252,7 +273,7 @@ export default function GitHubRepoIntake() {
                           <div className="text-xs text-gray-500">{entity.title}</div>
                         </div>
                       </div>
-                      <div className="col-span-3 text-right font-mono text-[#D4AF37]">{formatTokens(entity.tokensPerYear)}</div>
+                      <div className="col-span-3 text-right font-mono text-[#D4AF37]">{formatTokens(entity.totalTokens)}</div>
                       <div className="col-span-2 text-right font-mono text-gray-300">{formatTokens(entity.tokensPerMonth)}</div>
                       <div className="col-span-2 text-right font-mono text-gray-500">±{entity.confidenceInterval}%</div>
                     </div>

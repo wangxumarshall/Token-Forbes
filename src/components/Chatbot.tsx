@@ -1,13 +1,18 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { MessageSquare, X, Send, Zap, Brain, Loader2 } from 'lucide-react';
-import { chatWithPro, chatWithFlashLite } from '../services/geminiService';
+import { AI_CONFIG_ERROR, chatWithPro, chatWithFlashLite, defaultAiModelLabel, isAiConfigured } from '../services/geminiService';
 import ReactMarkdown from 'react-markdown';
 
 export default function Chatbot() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<{ role: 'user' | 'model', text: string }[]>([
-    { role: 'model', text: 'Hello! I am the Token Forbes AI Assistant. Ask me about the leaderboard, our methodology, or the AI industry compute landscape.' }
+    {
+      role: 'model',
+      text: isAiConfigured
+        ? `Hello! I am the Token Forbes AI Assistant, powered by ${defaultAiModelLabel}. Ask me about the leaderboard, our methodology, or the AI industry compute landscape.`
+        : `${AI_CONFIG_ERROR} Once the OpenRouter key is added, chat and data-engine features will become available.`,
+    }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -24,7 +29,7 @@ export default function Chatbot() {
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || isLoading || !isAiConfigured) return;
 
     const userMsg = input.trim();
     setInput('');
@@ -94,9 +99,10 @@ export default function Chatbot() {
               <span className="text-gray-400">Response Mode:</span>
               <button
                 onClick={() => setIsFastMode(!isFastMode)}
+                disabled={!isAiConfigured}
                 className={`flex items-center gap-1 px-2 py-1 rounded-md transition-colors ${
                   isFastMode ? 'bg-blue-500/20 text-blue-400' : 'bg-[#D4AF37]/20 text-[#D4AF37]'
-                }`}
+                } disabled:cursor-not-allowed disabled:opacity-50`}
               >
                 {isFastMode ? (
                   <><Zap className="w-3 h-3" /> Fast (Flash-Lite)</>
@@ -143,13 +149,13 @@ export default function Chatbot() {
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="Ask a question..."
+                  placeholder={isAiConfigured ? 'Ask a question...' : 'Chat is unavailable until OpenRouter is configured'}
                   className="w-full bg-[#1a1a1a] border border-white/10 rounded-xl pl-4 pr-12 py-3 text-sm text-white focus:outline-none focus:border-[#D4AF37] transition-colors"
-                  disabled={isLoading}
+                  disabled={isLoading || !isAiConfigured}
                 />
                 <button
                   type="submit"
-                  disabled={!input.trim() || isLoading}
+                  disabled={!input.trim() || isLoading || !isAiConfigured}
                   className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-[#D4AF37] hover:bg-white/5 rounded-lg transition-colors disabled:opacity-50"
                 >
                   <Send className="w-4 h-4" />

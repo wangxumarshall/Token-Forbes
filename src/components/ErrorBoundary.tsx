@@ -30,7 +30,7 @@ export class ErrorBoundary extends Component<Props, State> {
   public render() {
     if (this.state.hasError) {
       let errorMessage = this.state.error?.message || 'An unknown error occurred';
-      let isFirestoreError = false;
+      let isStorageError = false;
       let isOfflineError = false;
       let isPermissionError = false;
 
@@ -38,7 +38,7 @@ export class ErrorBoundary extends Component<Props, State> {
         const parsed = JSON.parse(errorMessage);
         if (parsed.error) {
           errorMessage = parsed.error;
-          isFirestoreError = true;
+          isStorageError = true;
           if (errorMessage.includes('client is offline')) {
             isOfflineError = true;
           }
@@ -69,15 +69,12 @@ export class ErrorBoundary extends Component<Props, State> {
 
             {isOfflineError && (
               <div className="space-y-4 text-gray-300">
-                <p className="font-bold text-white">🔥 Firestore Database Not Found or Offline</p>
-                <p>It looks like your Firestore database hasn't been created yet, or your network is blocking the connection.</p>
+                <p className="font-bold text-white">🔥 Data Storage Not Reachable</p>
+                <p>The app could not reach its configured storage backend, or your network blocked the request.</p>
                 <ol className="list-decimal list-inside space-y-2 ml-2">
-                  <li>Go to the <a href="https://console.firebase.google.com/" target="_blank" rel="noreferrer" className="text-[#D4AF37] hover:underline">Firebase Console</a>.</li>
-                  <li>Select your project.</li>
-                  <li>Click on <strong>Firestore Database</strong> in the left sidebar.</li>
-                  <li>Click <strong>Create database</strong>.</li>
-                  <li>Start in <strong>Test mode</strong> or <strong>Production mode</strong>.</li>
-                  <li>Choose a location and click <strong>Enable</strong>.</li>
+                  <li>Check that your storage credentials are configured for the deployment.</li>
+                  <li>Verify the relevant project service is enabled.</li>
+                  <li>Reload the page after the storage backend is healthy.</li>
                 </ol>
                 <button onClick={() => window.location.reload()} className="mt-4 px-6 py-2 bg-[#D4AF37] text-black font-bold rounded-lg hover:bg-[#b8952b] transition-colors">
                   Reload Page
@@ -88,15 +85,15 @@ export class ErrorBoundary extends Component<Props, State> {
             {isPermissionError && (
               <div className="space-y-4 text-gray-300">
                 <p className="font-bold text-white">🔒 Permission Denied</p>
-                <p>Your Firestore Security Rules are blocking this request.</p>
-                <p>Please update your rules in the Firebase Console to allow this operation.</p>
+                <p>Your data storage rules are blocking this request.</p>
+                <p>Please update the deployment's storage permissions to allow this operation.</p>
                 <button onClick={() => window.location.reload()} className="mt-4 px-6 py-2 bg-[#D4AF37] text-black font-bold rounded-lg hover:bg-[#b8952b] transition-colors">
                   Reload Page
                 </button>
               </div>
             )}
 
-            {!isOfflineError && !isPermissionError && (
+            {!isOfflineError && !isPermissionError && !isStorageError && (
               <button onClick={() => window.location.reload()} className="px-6 py-2 bg-white/10 text-white font-bold rounded-lg hover:bg-white/20 transition-colors">
                 Reload Page
               </button>

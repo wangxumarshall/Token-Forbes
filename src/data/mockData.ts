@@ -1,3 +1,6 @@
+import { getGitHubAvatarUrl } from '../utils/avatar.js';
+import { createEraTokenMetricsFromMonthlyBurn } from '../utils/tokenMath.js';
+
 export type SourceTag =
   | 'Direct Disclosure'
   | 'Proxy Inference'
@@ -31,16 +34,30 @@ export interface Entity {
   description: string;
 }
 
+const githubAvatar = (login: string) => getGitHubAvatarUrl(login);
+const FALLBACK_MONTHLY_BURN_MULTIPLIER = 9000;
+
 const today = new Date().toISOString().split('T')[0];
 const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
 function createEntity(base: Omit<Entity, 'rank' | 'lastUpdated' | 'nextUpdate' | 'updateFrequency'>): Entity {
+  const baselineMonthlyBurn = Math.max(
+    base.tokensPerMonth,
+    base.tokensPerDay * 30,
+    base.tokensPerYear / 12,
+    base.totalTokens / 12,
+  );
+  const eraMetrics = createEraTokenMetricsFromMonthlyBurn(
+    Math.max(baselineMonthlyBurn * FALLBACK_MONTHLY_BURN_MULTIPLIER, 180_000_000),
+  );
+
   return {
     rank: 0,
     updateFrequency: 'Weekly',
     lastUpdated: today,
     nextUpdate: nextWeek,
     ...base,
+    ...eraMetrics,
   };
 }
 
@@ -50,7 +67,7 @@ export const individualEntities: Entity[] = [
     name: 'Kenny',
     title: 'Token Power Committer',
     company: 'Mastra',
-    avatar: 'https://github.com/kenny.png',
+    avatar: githubAvatar('kenny'),
     totalTokens: 2.75 * 1e6,
     tokensPerDay: (2.75 * 1e6) / 365,
     tokensPerMonth: (2.75 * 1e6) / 12,
@@ -71,7 +88,7 @@ export const individualEntities: Entity[] = [
     name: 'Abhi Aiyer',
     title: 'Token Power Committer',
     company: 'Mastra',
-    avatar: 'https://github.com/abhi-aiyer.png',
+    avatar: githubAvatar('abhi-aiyer'),
     totalTokens: 2.58 * 1e6,
     tokensPerDay: (2.58 * 1e6) / 365,
     tokensPerMonth: (2.58 * 1e6) / 12,
@@ -92,7 +109,7 @@ export const individualEntities: Entity[] = [
     name: 'pablodanswer',
     title: 'AI Shipyard Captain',
     company: 'Danswer',
-    avatar: 'https://github.com/pablodanswer.png',
+    avatar: githubAvatar('pablodanswer'),
     totalTokens: 2.25 * 1e6,
     tokensPerDay: (2.25 * 1e6) / 365,
     tokensPerMonth: (2.25 * 1e6) / 12,
@@ -113,7 +130,7 @@ export const individualEntities: Entity[] = [
     name: 'Ehindero Israel',
     title: 'AI Shipyard Captain',
     company: 'Mastra',
-    avatar: 'https://github.com/ehinderolisa.png',
+    avatar: githubAvatar('ehinderolisa'),
     totalTokens: 2.02 * 1e6,
     tokensPerDay: (2.02 * 1e6) / 365,
     tokensPerMonth: (2.02 * 1e6) / 12,
@@ -134,7 +151,7 @@ export const individualEntities: Entity[] = [
     name: 'dayo',
     title: 'Agent Builder',
     company: 'Mastra',
-    avatar: 'https://github.com/dayo85.png',
+    avatar: githubAvatar('dayo85'),
     totalTokens: 1.60 * 1e6,
     tokensPerDay: (1.60 * 1e6) / 365,
     tokensPerMonth: (1.60 * 1e6) / 12,
@@ -155,7 +172,7 @@ export const individualEntities: Entity[] = [
     name: 'Joshua Folorunsho',
     title: 'Agent Builder',
     company: 'Mastra',
-    avatar: 'https://github.com/folorunsojoshua.png',
+    avatar: githubAvatar('folorunsojoshua'),
     totalTokens: 1.15 * 1e6,
     tokensPerDay: (1.15 * 1e6) / 365,
     tokensPerMonth: (1.15 * 1e6) / 12,
@@ -176,7 +193,7 @@ export const individualEntities: Entity[] = [
     name: 'ccurme',
     title: 'Agent Builder',
     company: 'LangChain',
-    avatar: 'https://github.com/ccurme.png',
+    avatar: githubAvatar('ccurme'),
     totalTokens: 1.03 * 1e6,
     tokensPerDay: (1.03 * 1e6) / 365,
     tokensPerMonth: (1.03 * 1e6) / 12,
@@ -197,7 +214,7 @@ export const individualEntities: Entity[] = [
     name: 'rkuo-danswer',
     title: 'Model-Assisted Hacker',
     company: 'Danswer',
-    avatar: 'https://github.com/rkuo-danswer.png',
+    avatar: githubAvatar('rkuo-danswer'),
     totalTokens: 0.80 * 1e6,
     tokensPerDay: (0.80 * 1e6) / 365,
     tokensPerMonth: (0.80 * 1e6) / 12,
@@ -218,7 +235,7 @@ export const individualEntities: Entity[] = [
     name: 'timothycarambat',
     title: 'Model-Assisted Hacker',
     company: 'AnythingLLM',
-    avatar: 'https://github.com/timothycarambat.png',
+    avatar: githubAvatar('timothycarambat'),
     totalTokens: 0.78 * 1e6,
     tokensPerDay: (0.78 * 1e6) / 365,
     tokensPerMonth: (0.78 * 1e6) / 12,
@@ -239,7 +256,7 @@ export const individualEntities: Entity[] = [
     name: 'Erick Friis',
     title: 'Model-Assisted Hacker',
     company: 'LangChain',
-    avatar: 'https://github.com/erickfriis.png',
+    avatar: githubAvatar('erickfriis'),
     totalTokens: 0.62 * 1e6,
     tokensPerDay: (0.62 * 1e6) / 365,
     tokensPerMonth: (0.62 * 1e6) / 12,
@@ -263,7 +280,7 @@ export const enterpriseEntities: Entity[] = [
     name: 'Mastra',
     title: 'Public GitHub AI Collective',
     company: 'mastra-ai/mastra',
-    avatar: 'https://github.com/mastra-ai.png',
+    avatar: githubAvatar('mastra-ai'),
     totalTokens: 11.4 * 1e6,
     tokensPerDay: (11.4 * 1e6) / 365,
     tokensPerMonth: (11.4 * 1e6) / 12,
@@ -284,7 +301,7 @@ export const enterpriseEntities: Entity[] = [
     name: 'LangChain',
     title: 'Public GitHub AI Collective',
     company: 'langchain-ai/langchain',
-    avatar: 'https://github.com/langchain-ai.png',
+    avatar: githubAvatar('langchain-ai'),
     totalTokens: 4.9 * 1e6,
     tokensPerDay: (4.9 * 1e6) / 365,
     tokensPerMonth: (4.9 * 1e6) / 12,
@@ -305,7 +322,7 @@ export const enterpriseEntities: Entity[] = [
     name: 'Danswer',
     title: 'Public GitHub AI Collective',
     company: 'danswer-ai/danswer',
-    avatar: 'https://github.com/danswer-ai.png',
+    avatar: githubAvatar('danswer-ai'),
     totalTokens: 4.3 * 1e6,
     tokensPerDay: (4.3 * 1e6) / 365,
     tokensPerMonth: (4.3 * 1e6) / 12,
@@ -326,7 +343,7 @@ export const enterpriseEntities: Entity[] = [
     name: 'AnythingLLM',
     title: 'Public GitHub AI Collective',
     company: 'Mintplex-Labs/anything-llm',
-    avatar: 'https://github.com/Mintplex-Labs.png',
+    avatar: githubAvatar('Mintplex-Labs'),
     totalTokens: 1.4 * 1e6,
     tokensPerDay: (1.4 * 1e6) / 365,
     tokensPerMonth: (1.4 * 1e6) / 12,
@@ -347,7 +364,7 @@ export const enterpriseEntities: Entity[] = [
     name: 'Chainlit',
     title: 'Public GitHub AI Collective',
     company: 'Chainlit/chainlit',
-    avatar: 'https://github.com/Chainlit.png',
+    avatar: githubAvatar('Chainlit'),
     totalTokens: 0.9 * 1e6,
     tokensPerDay: (0.9 * 1e6) / 365,
     tokensPerMonth: (0.9 * 1e6) / 12,

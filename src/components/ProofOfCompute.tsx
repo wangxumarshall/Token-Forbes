@@ -4,114 +4,39 @@ import { Cpu, Share2, Download, CheckCircle2, Loader2 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { formatNumber } from '../utils/format';
 import { useAuth } from '../contexts/AuthContext';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { db, auth } from '../firebase';
-
-enum OperationType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
-  LIST = 'list',
-  GET = 'get',
-  WRITE = 'write',
-}
-
-interface FirestoreErrorInfo {
-  error: string;
-  operationType: OperationType;
-  path: string | null;
-  authInfo: {
-    userId?: string;
-    email?: string | null;
-    emailVerified?: boolean;
-    isAnonymous?: boolean;
-    tenantId?: string | null;
-    providerInfo: {
-      providerId: string;
-      displayName: string | null;
-      email: string | null;
-      photoUrl: string | null;
-    }[];
-  }
-}
-
-function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: auth.currentUser?.uid,
-      email: auth.currentUser?.email,
-      emailVerified: auth.currentUser?.emailVerified,
-      isAnonymous: auth.currentUser?.isAnonymous,
-      tenantId: auth.currentUser?.tenantId,
-      providerInfo: auth.currentUser?.providerData.map(provider => ({
-        providerId: provider.providerId,
-        displayName: provider.displayName,
-        email: provider.email,
-        photoUrl: provider.photoURL
-      })) || []
-    },
-    operationType,
-    path
-  }
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
-}
-
-const withTimeout = <T,>(promise: Promise<T>, ms: number, message: string): Promise<T> => {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) => setTimeout(() => reject(new Error(message)), ms))
-  ]);
-};
+import { fetchUserProof, getBrowserGuestId, saveUserProof } from '../services/leaderboardStore';
 
 export default function ProofOfCompute() {
-  const { currentUser, login, isLoggingIn } = useAuth();
+  const { currentUser, login, isLoggingIn, activeProvider } = useAuth();
   const [tokens, setTokens] = useState<string>('');
   const [name, setName] = useState<string>('');
   const [isGenerated, setIsGenerated] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(false);
-  const [errorToThrow, setErrorToThrow] = useState<Error | null>(null);
+  const [storageError, setStorageError] = useState<string | null>(null);
   const badgeRef = useRef<HTMLDivElement>(null);
-
-  if (errorToThrow) {
-    throw errorToThrow;
-  }
 
   useEffect(() => {
     async function fetchExistingProof() {
-      if (!currentUser) {
-        setIsGenerated(false);
-        setTokens('');
-        setName('');
-        return;
-      }
-
       setIsLoadingData(true);
-      const path = `proofs/${currentUser.uid}`;
+      setStorageError(null);
+
+      const activeUserId = currentUser?.uid ?? getBrowserGuestId();
       try {
-        const docRef = doc(db, 'proofs', currentUser.uid);
-        const docSnap = await withTimeout(
-          getDoc(docRef),
-          5000,
-          "the client is offline"
-        );
-        
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          setName(data.name || '');
-          setTokens(formatNumber(data.tokens || 0));
+        const proof = await fetchUserProof(activeUserId);
+
+        if (proof) {
+          setName(proof.name || '');
+          setTokens(formatNumber(proof.tokens || 0));
           setIsGenerated(true);
+        } else if (currentUser?.displayName) {
+          setName(currentUser.displayName);
+          setIsGenerated(false);
         } else {
-          setName(currentUser.displayName || '');
+          setIsGenerated(false);
         }
       } catch (error) {
-        try {
-          handleFirestoreError(error, OperationType.GET, path);
-        } catch (e) {
-          setErrorToThrow(e as Error);
-        }
+        setStorageError(error instanceof Error ? error.message : 'Failed to load your saved proof.');
       } finally {
         setIsLoadingData(false);
       }
@@ -122,35 +47,22 @@ export default function ProofOfCompute() {
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentUser) {
-      await login();
-      return;
-    }
-
     if (tokens && name) {
       setIsSaving(true);
+      setStorageError(null);
       const numTokens = parseInt(tokens.replace(/,/g, '')) || 0;
-      const path = `proofs/${currentUser.uid}`;
+      const activeUserId = currentUser?.uid ?? getBrowserGuestId();
       
       try {
-        await withTimeout(
-          setDoc(doc(db, 'proofs', currentUser.uid), {
-            name,
-            tokens: numTokens,
-            updatedAt: serverTimestamp(),
-            userId: currentUser.uid,
-            photoURL: currentUser.photoURL
-          }),
-          5000,
-          "the client is offline"
-        );
+        await saveUserProof({
+          name,
+          tokens: numTokens,
+          userId: activeUserId,
+          photoURL: currentUser?.photoURL || null,
+        });
         setIsGenerated(true);
       } catch (error) {
-        try {
-          handleFirestoreError(error, OperationType.WRITE, path);
-        } catch (e) {
-          setErrorToThrow(e as Error);
-        }
+        setStorageError(error instanceof Error ? error.message : 'Failed to save your proof.');
       } finally {
         setIsSaving(false);
       }
@@ -223,7 +135,7 @@ export default function ProofOfCompute() {
             Claim Your <span className="text-[#D4AF37] italic">Digital Wealth</span>
           </h2>
           <p className="text-gray-400 text-lg leading-relaxed">
-            In the AI era, compute is the new currency. Submit your monthly API usage, generate your Proof of Compute badge, and join the ranks of the Token Forbes.
+            In the AI era, compute is the new currency. Submit your average monthly API usage, generate your Proof of Compute badge, and join the ranks of the Token Forbes.
           </p>
         </div>
 
@@ -233,6 +145,11 @@ export default function ProofOfCompute() {
             {isLoadingData && (
               <div className="absolute inset-0 bg-[#111]/80 backdrop-blur-sm z-10 flex items-center justify-center rounded-2xl">
                 <Loader2 className="w-8 h-8 text-[#D4AF37] animate-spin" />
+              </div>
+            )}
+            {storageError && (
+              <div className="mb-6 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                {storageError}
               </div>
             )}
             <form onSubmit={handleGenerate} className="space-y-6">
@@ -248,7 +165,6 @@ export default function ProofOfCompute() {
                   className="w-full bg-black border border-white/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] transition-all disabled:opacity-50"
                   placeholder="e.g. Satoshi Nakamoto"
                   required
-                  disabled={!currentUser}
                 />
               </div>
               
@@ -268,31 +184,41 @@ export default function ProofOfCompute() {
                     className="w-full bg-black border border-white/20 rounded-xl pl-12 pr-4 py-3 text-white font-mono focus:outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] transition-all disabled:opacity-50"
                     placeholder="1,000,000"
                     required
-                    disabled={!currentUser}
                   />
                   <Cpu className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                 </div>
                 <p className="mt-2 text-xs text-gray-500">Aggregate your usage across OpenAI, Anthropic, Google, etc.</p>
               </div>
 
-              {currentUser ? (
-                <button
-                  type="submit"
-                  disabled={isSaving}
-                  className="w-full bg-[#D4AF37] hover:bg-[#b8952b] text-black font-bold py-4 rounded-xl transition-colors flex items-center justify-center gap-2 uppercase tracking-widest text-sm disabled:opacity-70"
-                >
-                  {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Generate & Save Proof'}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={login}
-                  disabled={isLoggingIn}
-                  className="w-full bg-white text-black hover:bg-gray-200 font-bold py-4 rounded-xl transition-colors flex items-center justify-center gap-2 uppercase tracking-widest text-sm disabled:opacity-70"
-                >
-                  {isLoggingIn && <Loader2 className="w-5 h-5 animate-spin" />}
-                  {isLoggingIn ? 'Signing in...' : 'Sign in with Google to Generate'}
-                </button>
+              <button
+                type="submit"
+                disabled={isSaving}
+                className="w-full bg-[#D4AF37] hover:bg-[#b8952b] text-black font-bold py-4 rounded-xl transition-colors flex items-center justify-center gap-2 uppercase tracking-widest text-sm disabled:opacity-70"
+              >
+                {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Generate & Save Proof'}
+              </button>
+
+              {!currentUser && (
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => login('github')}
+                    disabled={isLoggingIn}
+                    className="w-full bg-white/10 text-white hover:bg-white/15 font-bold py-4 rounded-xl transition-colors flex items-center justify-center gap-2 uppercase tracking-widest text-sm disabled:opacity-70"
+                  >
+                    {isLoggingIn && activeProvider === 'github' && <Loader2 className="w-5 h-5 animate-spin" />}
+                    {isLoggingIn && activeProvider === 'github' ? 'Connecting...' : 'GitHub'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => login('google')}
+                    disabled={isLoggingIn}
+                    className="w-full bg-[#D4AF37]/90 text-black hover:bg-[#b8952b] font-bold py-4 rounded-xl transition-colors flex items-center justify-center gap-2 uppercase tracking-widest text-sm disabled:opacity-70"
+                  >
+                    {isLoggingIn && activeProvider === 'google' && <Loader2 className="w-5 h-5 animate-spin" />}
+                    {isLoggingIn && activeProvider === 'google' ? 'Connecting...' : 'Google'}
+                  </button>
+                </div>
               )}
             </form>
           </div>
@@ -328,7 +254,7 @@ export default function ProofOfCompute() {
                     </div>
                     
                     <div className="space-y-2">
-                      <div className="text-xs text-gray-500 uppercase tracking-widest">Monthly Burn Rate</div>
+                      <div className="text-xs text-gray-500 uppercase tracking-widest">Average Monthly Burn</div>
                       <div className="font-mono text-4xl font-bold text-white tracking-tighter">
                         {tokens}
                       </div>

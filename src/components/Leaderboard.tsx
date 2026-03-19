@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ChevronDown, ChevronUp, Info, ShieldCheck, Activity, Database } from 'lucide-react';
 import { Entity } from '../data/mockData';
 import { formatTokens } from '../utils/format';
+import { normalizeAvatarUrl } from '../utils/avatar';
 import AssetGraph from './AssetGraph';
 import clsx from 'clsx';
 
@@ -32,7 +33,7 @@ export default function Leaderboard({ data }: Props) {
           <div className="col-span-1">Rank</div>
           <div className="col-span-4">Entity</div>
           <div className="col-span-2 text-right">Total Tokens</div>
-          <div className="col-span-2 text-right">Daily Burn</div>
+          <div className="col-span-2 text-right">Avg Monthly Burn</div>
           <div className="col-span-3 text-right">Source / Confidence</div>
         </div>
 
@@ -53,7 +54,7 @@ export default function Leaderboard({ data }: Props) {
                 
                 <div className="col-span-4 flex items-center gap-4">
                   <img 
-                    src={entity.avatar} 
+                    src={normalizeAvatarUrl(entity.avatar, entity.name)} 
                     alt={entity.name} 
                     className="w-12 h-12 rounded-full border border-white/20 object-cover"
                     referrerPolicy="no-referrer"
@@ -69,7 +70,7 @@ export default function Leaderboard({ data }: Props) {
                 </div>
 
                 <div className="col-span-2 text-right font-mono text-sm text-gray-300">
-                  {formatTokens(entity.tokensPerDay)}/d
+                  {formatTokens(entity.tokensPerMonth)}/mo
                 </div>
 
                 <div className="col-span-3 flex items-center justify-end gap-3">
@@ -108,11 +109,11 @@ export default function Leaderboard({ data }: Props) {
                         
                         <div className="grid grid-cols-3 gap-4 pt-4">
                           <div className="bg-[#1a1a1a] p-4 rounded-xl border border-white/5">
-                            <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Monthly Burn</div>
+                            <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Avg Monthly Burn</div>
                             <div className="font-mono text-sm text-white">{formatTokens(entity.tokensPerMonth)}</div>
                           </div>
                           <div className="bg-[#1a1a1a] p-4 rounded-xl border border-white/5">
-                            <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Yearly Run Rate</div>
+                            <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Annualized Burn</div>
                             <div className="font-mono text-sm text-white">{formatTokens(entity.tokensPerYear)}</div>
                           </div>
                           <div className="bg-[#1a1a1a] p-4 rounded-xl border border-white/5">

@@ -1,0 +1,30 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "redirects": [
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "token-forbes-vercel.vercel.app"
+        }
+      ],
+      "destination": "https://token-forbes.vercel.app/#rankings",
+      "permanent": true
+    },
+    {
+      "source": "/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "token-forbes-vercel.vercel.app"
+        }
+      ],
+      "destination": "https://token-forbes.vercel.app/$1",
+      "permanent": true
+    }
+  ]
+}

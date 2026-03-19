@@ -8,7 +8,9 @@ export default defineConfig(({mode}) => {
   return {
     plugins: [react(), tailwindcss()],
     define: {
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
+      'process.env.AI_CONFIGURED': JSON.stringify(Boolean(env.OPENROUTER_API_KEY || '')),
+      'process.env.AI_PROVIDER': JSON.stringify('OpenRouter'),
+      'process.env.AI_MODEL': JSON.stringify(env.OPENROUTER_MODEL || 'stepfun/step-3.5-flash:free'),
     },
     resolve: {
       alias: {
