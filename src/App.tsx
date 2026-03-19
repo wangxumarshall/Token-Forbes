@@ -26,12 +26,18 @@ export default function App() {
       const proofs = snapshot.docs.map(doc => doc.data());
       
       // Merge mock entities and proofs
+      const entityMap = new Map<string, number>();
       let mergedEntities = [...allMockEntities];
+
+      mergedEntities.forEach((e, index) => {
+        entityMap.set(e.name.toLowerCase(), index);
+      });
       
       for (const proof of proofs) {
-        const existingIndex = mergedEntities.findIndex(e => e.name.toLowerCase() === proof.name?.toLowerCase());
+        const proofNameLower = proof.name?.toLowerCase();
+        const existingIndex = proofNameLower !== undefined ? entityMap.get(proofNameLower) : undefined;
         
-        if (existingIndex >= 0) {
+        if (existingIndex !== undefined) {
           // Accumulate tokens
           const addedTokens = proof.tokens || 0;
           mergedEntities[existingIndex] = {
@@ -70,6 +76,9 @@ export default function App() {
             wealthStructure: [{ name: 'Submitted Compute', value: 100 }],
             description: 'User submitted proof of compute.'
           });
+          if (proofNameLower !== undefined) {
+            entityMap.set(proofNameLower, mergedEntities.length - 1);
+          }
         }
       }
 
