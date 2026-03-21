@@ -1,5 +1,5 @@
 import type { StoredProof } from '../src/types/storage';
-import { PROOFS_PREFIX, STORAGE_NOT_CONFIGURED_ERROR, makeBlobPath, parseRequestBody, readJsonBlob, sendJson, writeJsonBlob } from './_blobStore.js';
+import { STORAGE_NOT_CONFIGURED_ERROR, parseRequestBody, readStoredProof, sendJson, writeStoredProof } from './_storage.js';
 
 export const runtime = 'nodejs';
 
@@ -26,8 +26,8 @@ export default async function handler(request: any, response: any) {
         return sendJson(response, { error: 'userId is required.' }, 400);
       }
 
-      const record = await readJsonBlob<StoredProof>(makeBlobPath(PROOFS_PREFIX, userId));
-      return sendJson(response, record);
+      const result = await readStoredProof(userId);
+      return sendJson(response, result);
     }
 
     if (request.method === 'PUT') {
@@ -42,8 +42,8 @@ export default async function handler(request: any, response: any) {
         updatedAt: new Date().toISOString(),
       };
 
-      await writeJsonBlob(makeBlobPath(PROOFS_PREFIX, record.userId), record);
-      return sendJson(response, record);
+      const result = await writeStoredProof(record);
+      return sendJson(response, result);
     }
 
     return sendJson(response, { error: 'Method not allowed.' }, 405);

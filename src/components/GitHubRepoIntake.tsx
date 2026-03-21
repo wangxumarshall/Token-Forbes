@@ -65,9 +65,11 @@ export default function GitHubRepoIntake() {
       });
 
       setSuccess(
-        provider === 'vercel-blob'
-          ? `Saved ${evaluation.repo.fullName} contributor ranking to the live leaderboard database.`
-          : `Saved ${evaluation.repo.fullName} contributor ranking to local browser storage.`,
+        provider === 'sqlite'
+          ? `Saved ${evaluation.repo.fullName} contributor ranking to the SQLite leaderboard database.`
+          : provider === 'vercel-blob'
+            ? `Saved ${evaluation.repo.fullName} contributor ranking to the live leaderboard database.`
+            : `Saved ${evaluation.repo.fullName} contributor ranking to local browser storage.`,
       );
     } catch (err: any) {
       setError(err.message || 'Failed to save repository ranking.');

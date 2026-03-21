@@ -1,7 +1,8 @@
 import type { Entity } from '../data/mockData';
 import type { RepoEvaluationSummary } from '../services/githubRankingService';
 
-export type StorageProvider = 'vercel-blob' | 'local-storage';
+export type ServerStorageProvider = 'sqlite' | 'vercel-blob';
+export type StorageProvider = ServerStorageProvider | 'local-storage';
 
 export interface StoredProof {
   userId: string;
@@ -37,7 +38,15 @@ export interface GlobalGitHubSnapshot {
   generatedAt: string;
   individuals: Entity[];
   enterprises: Entity[];
+  openSourceEnterprises: Entity[];
   methodology: string[];
+  enterpriseMethodology: string[];
   repoCount: number;
   contributorCount: number;
+  enterpriseCount: number;
+}
+
+export interface StoredRecordResponse<T> {
+  record: T | null;
+  provider: ServerStorageProvider;
 }

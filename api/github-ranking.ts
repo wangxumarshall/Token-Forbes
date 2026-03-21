@@ -1,5 +1,5 @@
 import type { StoredGitHubRanking } from '../src/types/storage';
-import { GITHUB_RANKINGS_PREFIX, STORAGE_NOT_CONFIGURED_ERROR, makeBlobPath, parseRequestBody, sendJson, writeJsonBlob } from './_blobStore.js';
+import { STORAGE_NOT_CONFIGURED_ERROR, parseRequestBody, sendJson, writeStoredGitHubRanking } from './_storage.js';
 
 export const runtime = 'nodejs';
 
@@ -35,8 +35,8 @@ export default async function handler(request: any, response: any) {
         : undefined,
     };
 
-    await writeJsonBlob(makeBlobPath(GITHUB_RANKINGS_PREFIX, record.docId), record);
-    return sendJson(response, record);
+    const result = await writeStoredGitHubRanking(record);
+    return sendJson(response, result);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to persist GitHub ranking.';
     const status = message === STORAGE_NOT_CONFIGURED_ERROR ? 503 : 400;

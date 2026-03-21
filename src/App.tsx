@@ -28,9 +28,12 @@ const EMPTY_GLOBAL_SNAPSHOT: GlobalGitHubSnapshot = {
   generatedAt: '',
   individuals: [],
   enterprises: [],
+  openSourceEnterprises: [],
   methodology: [],
+  enterpriseMethodology: [],
   repoCount: 0,
   contributorCount: 0,
+  enterpriseCount: 0,
 };
 
 function getEntityKey(entity: Entity) {

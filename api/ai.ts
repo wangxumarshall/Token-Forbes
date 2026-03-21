@@ -1,4 +1,4 @@
-import { parseRequestBody, sendJson } from './_blobStore.js';
+import { parseRequestBody, sendJson } from './_storage.js';
 
 export const runtime = 'nodejs';
 

@@ -63,7 +63,7 @@ export default function Methodology() {
               <div className="text-xs text-[#D4AF37] uppercase tracking-wider mb-3">For Enterprise Whales</div>
               <p className="text-gray-400 text-sm leading-relaxed">
                 <strong>Cloud Bill Parsing:</strong> Tracking public cloud spend, deducting storage/bandwidth, and reverse-engineering consumption via API pricing.<br/><br/>
-                <strong>Funding Scale:</strong> Analyzing early-stage AI startup funding vs. DAU to model their underlying token burn rate.
+                <strong>Enterprise Proxy Stack:</strong> For the global enterprise leaderboard, we blend infrastructure scale, model cadence, product reach, developer surface area, and public code output into a monthly token-burn estimate.
               </p>
             </div>
             <div className="bg-[#111] p-8 rounded-2xl border border-white/10">
@@ -80,7 +80,7 @@ export default function Methodology() {
               <div className="text-xs text-[#D4AF37] uppercase tracking-wider mb-3">For Open Source AI Builders</div>
               <p className="text-gray-400 text-sm leading-relaxed">
                 <strong>Search + Benchmarks:</strong> We dynamically query GitHub Search API for repositories with more than 1,000 stars and pushes in the last 30 days, then blend those with benchmark repos like `microsoft/vscode`, `vercel/next.js`, `langchain-ai/langchain`, and `huggingface/transformers`.<br/><br/>
-                <strong>Token Conversion:</strong> We pull contributor stats for the recent activity window, estimate high-intensity AI coding burn from context-window-heavy workflows, then convert each developer into average monthly burn and total tokens accumulated since January 2025.
+                <strong>Token Conversion:</strong> We pull contributor stats for the recent activity window, estimate high-intensity AI coding burn from context-window-heavy workflows, then convert each developer into average monthly burn and total tokens accumulated since January 2025. That public-code signal also calibrates the new global enterprise ranking instead of standing alone.
               </p>
             </div>
           </div>

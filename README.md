@@ -13,7 +13,8 @@ Production:
   - GitHub Search API
   - recent contributor activity
   - benchmark repos such as `microsoft/vscode`, `vercel/next.js`, `langchain-ai/langchain`, and `huggingface/transformers`
-- Stores leaderboard submissions in Vercel Blob
+- Builds a modeled global enterprise ranking using the same proxy methodology plus public-code calibration
+- Stores leaderboard submissions in SQLite by default, with Vercel Blob as a fallback
 - Uses OpenRouter for chat and data-engine AI features
 - Supports Google and GitHub sign-in via Firebase Auth
 
@@ -21,14 +22,14 @@ Production:
 
 - Frontend: React 19, Vite, Tailwind CSS, Motion
 - APIs: Vercel serverless functions
-- Persistence: Vercel Blob
+- Persistence: SQLite by default, Vercel Blob fallback, browser `localStorage` fallback on the client
 - Auth: Firebase Authentication
 - AI: OpenRouter, default model `stepfun/step-3.5-flash:free`
 
 ## Local Development
 
 Prerequisites:
-- Node.js 20+
+- Node.js 22.5+
 - npm
 
 Install and run:
@@ -64,11 +65,22 @@ GITHUB_TOKEN=...
 
 Without `GITHUB_TOKEN`, the global GitHub ranking route works in a degraded mode and can hit GitHub rate limits sooner.
 
-### Required for Persistent Storage
+### Default / Optional Persistent Storage
+
+SQLite is the default server storage path.
+
+```bash
+TOKEN_FORBES_STORAGE_PROVIDER=sqlite
+SQLITE_DB_PATH=.data/token-forbes.sqlite
+```
+
+### Optional Blob Fallback
 
 ```bash
 BLOB_READ_WRITE_TOKEN=...
 ```
+
+If `TOKEN_FORBES_STORAGE_PROVIDER` is omitted, the server tries SQLite first and falls back to Blob when SQLite is unavailable.
 
 ### Optional Firebase Override
 
@@ -110,6 +122,7 @@ Important deployment details:
 - `token-forbes-vercel.vercel.app` is redirected to `https://token-forbes.vercel.app/#rankings`
 - AI requests go through server-side `api/ai`, so the OpenRouter key stays on the server
 - GitHub ranking APIs run on the server and use `GITHUB_TOKEN` when available
+- On Vercel, SQLite defaults to `/tmp/token-forbes.sqlite`, which is cheap and functional for low traffic but not durable across cold starts; use Blob or a persistent volume if you need durable production storage
 
 ## Main API Routes
 
@@ -136,7 +149,8 @@ npm run lint
   - `Total Tokens`: cumulative total since January 2025
   - `Avg Monthly Burn`: average monthly token consumption since January 2025
 - Added dynamic global GitHub ranking with up to 500 contributors
-- Replaced Firestore persistence with Vercel Blob-backed storage
+- Added a dedicated global enterprise token-consumption ranking derived from project proxy methodology
+- Replaced Firestore-era persistence with SQLite-first storage and Blob fallback
 
 ## Repository
 

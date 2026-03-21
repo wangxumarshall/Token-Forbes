@@ -3,6 +3,7 @@ import type {
   LeaderboardSnapshot,
   RankingUpdatedBy,
   StorageProvider,
+  StoredRecordResponse,
   StoredGitHubRanking,
   StoredProof,
 } from '../types/storage';
@@ -126,9 +127,12 @@ function getEmptyGlobalGitHubSnapshot(): GlobalGitHubSnapshot {
     generatedAt: new Date().toISOString(),
     individuals: [],
     enterprises: [],
+    openSourceEnterprises: [],
     methodology: [],
+    enterpriseMethodology: [],
     repoCount: 0,
     contributorCount: 0,
+    enterpriseCount: 0,
   };
 }
 
@@ -153,8 +157,7 @@ export function getBrowserGuestId() {
 
 export async function fetchLeaderboardSnapshot(): Promise<LeaderboardSnapshot> {
   try {
-    const snapshot = await requestJson<Omit<LeaderboardSnapshot, 'provider'>>('/api/leaderboard');
-    return { ...snapshot, provider: 'vercel-blob' };
+    return await requestJson<LeaderboardSnapshot>('/api/leaderboard');
   } catch (error) {
     if (!shouldUseLocalFallback(error)) {
       throw error;
@@ -178,7 +181,10 @@ export async function fetchGlobalGitHubSnapshot(): Promise<GlobalGitHubSnapshot>
 
 export async function fetchUserProof(userId: string) {
   try {
-    return await requestJson<StoredProof | null>(`/api/proof?userId=${encodeURIComponent(userId)}`);
+    const response = await requestJson<StoredRecordResponse<StoredProof>>(
+      `/api/proof?userId=${encodeURIComponent(userId)}`,
+    );
+    return response.record;
   } catch (error) {
     if (!shouldUseLocalFallback(error)) {
       throw error;
@@ -195,12 +201,12 @@ export async function saveUserProof(input: Omit<StoredProof, 'updatedAt'>): Prom
   };
 
   try {
-    await requestJson<StoredProof>('/api/proof', {
+    const response = await requestJson<StoredRecordResponse<StoredProof>>('/api/proof', {
       method: 'PUT',
       body: JSON.stringify(record),
     });
     dispatchLeaderboardUpdate();
-    return 'vercel-blob';
+    return response.provider;
   } catch (error) {
     if (!shouldUseLocalFallback(error)) {
       throw error;
@@ -221,12 +227,12 @@ export async function saveGitHubRanking(
   };
 
   try {
-    await requestJson<StoredGitHubRanking>('/api/github-ranking', {
+    const response = await requestJson<StoredRecordResponse<StoredGitHubRanking>>('/api/github-ranking', {
       method: 'PUT',
       body: JSON.stringify(record),
     });
     dispatchLeaderboardUpdate();
-    return 'vercel-blob';
+    return response.provider;
   } catch (error) {
     if (!shouldUseLocalFallback(error)) {
       throw error;

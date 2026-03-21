@@ -1,4 +1,5 @@
 import { Entity, SourceTag, WealthStructure } from '../data/mockData.js';
+import { buildGlobalEnterpriseRankingSnapshot } from './globalEnterpriseRankingService.js';
 import { calculateAITokens, createEraTokenMetricsFromMonthlyBurn } from '../utils/tokenMath.js';
 
 const GITHUB_API_BASE = 'https://api.github.com';
@@ -130,9 +131,12 @@ export interface GlobalGitHubRankingSnapshot {
   generatedAt: string;
   individuals: Entity[];
   enterprises: Entity[];
+  openSourceEnterprises: Entity[];
   methodology: string[];
+  enterpriseMethodology: string[];
   repoCount: number;
   contributorCount: number;
+  enterpriseCount: number;
 }
 
 function wait(ms: number) {
@@ -765,15 +769,19 @@ export async function buildGlobalGitHubRankingSnapshot(
   }
 
   const individuals = aggregateIndividuals(evaluations);
-  const enterprises = aggregateEnterprises(evaluations);
+  const openSourceEnterprises = aggregateEnterprises(evaluations);
+  const enterpriseSnapshot = buildGlobalEnterpriseRankingSnapshot(openSourceEnterprises);
   const totalMonthlyBurn = individuals.reduce((sum, entity) => sum + entity.tokensPerMonth, 0);
 
   return {
     generatedAt: new Date().toISOString(),
     individuals,
-    enterprises,
+    enterprises: enterpriseSnapshot.enterprises,
+    openSourceEnterprises,
     methodology: buildMethodology(totalMonthlyBurn, 'global'),
+    enterpriseMethodology: enterpriseSnapshot.methodology,
     repoCount: evaluations.length,
     contributorCount: individuals.length,
+    enterpriseCount: enterpriseSnapshot.enterprises.length,
   };
 }
