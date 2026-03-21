@@ -91,6 +91,7 @@ interface AggregatedEntitySeed {
   id: string;
   name: string;
   avatar: string;
+  profileUrl?: string;
   entityType: 'individual' | 'enterprise';
   sourceTag: SourceTag;
   confidenceInterval: number;
@@ -370,6 +371,7 @@ function buildContributorEntity(
     title: getContributorTitle(tokenEstimate.totalTokens),
     company: repoResponse.full_name,
     avatar: contributor.author.avatar_url,
+    profileUrl: contributor.author.html_url,
     totalTokens: tokenEstimate.totalTokens,
     tokensPerDay: tokenEstimate.tokensPerDay,
     tokensPerMonth: tokenEstimate.tokensPerMonth,
@@ -575,6 +577,7 @@ function aggregateIndividuals(evaluations: GitHubRepoEvaluation[]) {
         id: `github-user-${entity.name.toLowerCase().replace(/[^a-z0-9-]/g, '-')}`,
         name: entity.name,
         avatar: entity.avatar,
+        profileUrl: entity.profileUrl,
         entityType: 'individual',
         sourceTag: entity.sourceTag,
         confidenceInterval: entity.confidenceInterval,
@@ -603,6 +606,7 @@ function aggregateIndividuals(evaluations: GitHubRepoEvaluation[]) {
         title: getContributorTitle(metrics.totalTokens),
         company: companyLabel,
         avatar: seed.avatar,
+        profileUrl: seed.profileUrl,
         totalTokens: metrics.totalTokens,
         tokensPerDay: metrics.tokensPerDay,
         tokensPerMonth: metrics.tokensPerMonth,

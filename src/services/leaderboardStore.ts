@@ -2,6 +2,7 @@ import type {
   GlobalGitHubSnapshot,
   LeaderboardSnapshot,
   RankingUpdatedBy,
+  ServerStorageProvider,
   StorageProvider,
   StoredRecordResponse,
   StoredGitHubRanking,
@@ -60,6 +61,11 @@ function listLocalRecords<T>(prefix: string) {
 }
 
 type ApiError = Error & { status?: number };
+
+export interface FetchedProofRecord {
+  record: StoredProof | null;
+  provider: StorageProvider;
+}
 
 async function requestJson<T>(input: string, init?: RequestInit): Promise<T> {
   const response = await fetch(input, {
@@ -179,22 +185,36 @@ export async function fetchGlobalGitHubSnapshot(): Promise<GlobalGitHubSnapshot>
   }
 }
 
-export async function fetchUserProof(userId: string) {
+export async function fetchUserProofRecord(
+  userId: string,
+  options?: { allowLocalFallback?: boolean },
+): Promise<FetchedProofRecord> {
   try {
     const response = await requestJson<StoredRecordResponse<StoredProof>>(
       `/api/proof?userId=${encodeURIComponent(userId)}`,
     );
-    return response.record;
+    return {
+      record: response.record,
+      provider: response.provider,
+    };
   } catch (error) {
-    if (!shouldUseLocalFallback(error)) {
+    if (options?.allowLocalFallback === false || !shouldUseLocalFallback(error)) {
       throw error;
     }
 
-    return readLocalRecord<StoredProof>(getProofStorageKey(userId));
+    return {
+      record: readLocalRecord<StoredProof>(getProofStorageKey(userId)),
+      provider: 'local-storage',
+    };
   }
 }
 
-export async function saveUserProof(input: Omit<StoredProof, 'updatedAt'>): Promise<StorageProvider> {
+export async function fetchUserProof(userId: string, options?: { allowLocalFallback?: boolean }) {
+  const result = await fetchUserProofRecord(userId, options);
+  return result.record;
+}
+
+export async function saveUserProof(input: Omit<StoredProof, 'updatedAt'>): Promise<ServerStorageProvider> {
   const record: StoredProof = {
     ...input,
     updatedAt: new Date().toISOString(),
@@ -205,16 +225,17 @@ export async function saveUserProof(input: Omit<StoredProof, 'updatedAt'>): Prom
       method: 'PUT',
       body: JSON.stringify(record),
     });
+    writeLocalRecord(getProofStorageKey(record.userId), response.record || record);
     dispatchLeaderboardUpdate();
     return response.provider;
   } catch (error) {
-    if (!shouldUseLocalFallback(error)) {
-      throw error;
+    if (shouldUseLocalFallback(error)) {
+      throw new Error(
+        'Proof could not be saved to the server. Please retry in a moment so your certificate remains available across devices.',
+      );
     }
 
-    writeLocalRecord(getProofStorageKey(record.userId), record);
-    dispatchLeaderboardUpdate();
-    return 'local-storage';
+    throw error;
   }
 }
 

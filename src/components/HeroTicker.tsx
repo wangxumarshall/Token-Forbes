@@ -27,16 +27,16 @@ export default function HeroTicker({ data }: Props) {
   }, [sourceEntities]);
 
   return (
-    <div className="bg-[#1a1a1a] border-y border-white/5 overflow-hidden py-3">
+    <div className="overflow-hidden border-y border-white/5 bg-[#1a1a1a] py-2 sm:py-3">
       <div className="flex animate-marquee whitespace-nowrap">
         {[...sourceEntities, ...sourceEntities].map((giant, idx) => (
-          <div key={`${giant.id}-${idx}`} className="flex items-center gap-4 px-8 border-r border-white/10 last:border-0">
-            <span className="text-gray-500 font-mono text-xs uppercase tracking-widest">{giant.company}</span>
-            <span className="text-[#D4AF37] font-mono font-bold">
+          <div key={`${giant.id}-${idx}`} className="flex items-center gap-2 border-r border-white/10 px-4 last:border-0 sm:gap-4 sm:px-8">
+            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-gray-500 sm:text-xs sm:tracking-widest">{giant.company}</span>
+            <span className="font-mono text-sm font-bold text-[#D4AF37] sm:text-base">
               {formatTokens(tokens[idx % sourceEntities.length])}
             </span>
             <motion.span 
-              className="text-green-500 text-xs"
+              className="text-[10px] text-green-500 sm:text-xs"
               animate={{ opacity: [1, 0.5, 1] }}
               transition={{ repeat: Infinity, duration: 1 }}
             >

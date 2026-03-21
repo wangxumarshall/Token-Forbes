@@ -152,6 +152,25 @@ npm run lint
 - Added a dedicated global enterprise token-consumption ranking derived from project proxy methodology
 - Replaced Firestore-era persistence with SQLite-first storage and Blob fallback
 
+## TODO: Data Accuracy & Sustainability
+
+Current implementation reality: the production leaderboard still blends demo seed entities, public GitHub proxy estimates, self-reported proofs, and a manually seeded enterprise model. To make Token Forbes objectively credible and sustainably evolvable, prioritize the following:
+
+- [ ] Remove demo/mock entities from production rankings, or gate them behind an explicit demo mode so synthetic seed data never competes with live entities.
+- [ ] Build a per-entity provenance ledger that stores source URLs, collection timestamps, raw snapshots, parser version, prompt/model version, and methodology version for every ranked estimate.
+- [ ] Expand GitHub ingestion beyond the current `stars > 1000` and recent-push sampling window so rankings are less biased toward a small set of famous public repos.
+- [ ] Add identity resolution across GitHub logins, organizations, proofs, and future partner feeds so rankings stop merging or splitting people based only on display names and repo owners.
+- [ ] Add stronger GitHub quality controls for bots, mirrors, vendored code, mass-formatting commits, monorepos, and smaller but high-intensity AI repositories that the current heuristic filters miss.
+- [ ] Calibrate `calculateAITokens()` against real-world ground truth such as voluntary billing samples, provider receipts, IDE telemetry, or partner data instead of relying only on hardcoded multipliers, floors, and caps.
+- [ ] Make confidence intervals evidence-based, using source coverage, freshness, and cross-source agreement, instead of mostly static hand-tuned percentages.
+- [ ] Separate self-reported Proof of Compute submissions into verified and unverified tiers, and require verification artifacts or connectors before they can influence the main public leaderboard.
+- [ ] Replace manually curated enterprise seeds, signal scores, and scale multipliers with an evidence-backed feature store built from official disclosures, cloud partnerships, infra announcements, product usage, and calibrated public-code signals.
+- [ ] Keep direct disclosure, proxy inference, model estimation, and API-partner data in separate pipelines with explicit trust weights instead of using source tags as labels only.
+- [ ] Persist citations and extracted numeric evidence for Data Engine evaluations so AI-generated enterprise estimates are reviewable, reproducible, and diffable over time.
+- [ ] Add private-repo and private-usage opt-in connectors so Token Forbes can measure serious AI builders whose compute spend is invisible in public open-source activity.
+- [ ] Introduce scheduled snapshotting, regression tests, anomaly detection, and manual review queues so methodology changes do not silently rewrite the leaderboard.
+- [ ] Publish methodology changelogs and historical snapshots so users can understand why a rank changed and compare estimates across versions.
+
 ## Repository
 
 - Remote: [https://github.com/wangxumarshall/Token-Forbes.git](https://github.com/wangxumarshall/Token-Forbes.git)

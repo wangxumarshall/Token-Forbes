@@ -8,6 +8,7 @@ import Header from './components/Header';
 import HeroTicker from './components/HeroTicker';
 import Leaderboard from './components/Leaderboard';
 import ProofOfCompute from './components/ProofOfCompute';
+import SharedProofPage from './components/SharedProofPage';
 import Methodology from './components/Methodology';
 import AgentDashboard from './components/AgentDashboard';
 import Chatbot from './components/Chatbot';
@@ -21,6 +22,7 @@ import {
 } from './services/leaderboardStore';
 import type { GlobalGitHubSnapshot, StoredGitHubRanking, StoredProof } from './types/storage';
 import { normalizeAvatarUrl } from './utils/avatar';
+import { getSharedProofUserId } from './utils/proofSharing';
 import { createEraTokenMetricsFromMonthlyBurn, normalizeTokenMetrics } from './utils/tokenMath';
 import clsx from 'clsx';
 
@@ -55,8 +57,28 @@ function mergeGitHubEntity(existing: Entity, incoming: Entity) {
 export default function App() {
   const [leaderboardData, setLeaderboardData] = useState<Entity[]>([]);
   const [activeTab, setActiveTab] = useState<'individual' | 'enterprise'>('individual');
+  const [sharedProofUserId, setSharedProofUserId] = useState<string | null>(() =>
+    typeof window === 'undefined' ? null : getSharedProofUserId(window.location.search),
+  );
 
   useEffect(() => {
+    const syncSharedProofState = () => {
+      setSharedProofUserId(getSharedProofUserId(window.location.search));
+    };
+
+    syncSharedProofState();
+    window.addEventListener('popstate', syncSharedProofState);
+
+    return () => {
+      window.removeEventListener('popstate', syncSharedProofState);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (sharedProofUserId) {
+      return undefined;
+    }
+
     const baseEntities = [...allMockEntities].map((entity) => normalizeTokenMetrics({ ...entity }));
     
     const rebuildLeaderboard = (
@@ -186,7 +208,7 @@ export default function App() {
       window.clearInterval(intervalId);
       window.removeEventListener(LEADERBOARD_DATA_UPDATED_EVENT, handleDataUpdate);
     };
-  }, []);
+  }, [sharedProofUserId]);
 
   const filteredData = leaderboardData
     .filter(entity => entity.entityType === activeTab)
@@ -194,82 +216,91 @@ export default function App() {
   const tickerData = leaderboardData.filter((entity) => entity.entityType === 'individual').slice(0, 10);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white font-sans selection:bg-[#D4AF37] selection:text-black">
+    <div id="top" className="min-h-screen overflow-x-hidden bg-[#0a0a0a] text-white font-sans selection:bg-[#D4AF37] selection:text-black">
       <Header />
-      <HeroTicker data={tickerData} />
-      
+      {sharedProofUserId ? null : <HeroTicker data={tickerData} />}
+
       <main>
-        {/* Hero Section */}
-        <section className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-center">
-          <h1 className="text-5xl md:text-7xl font-serif font-bold mb-6 tracking-tight">
-            The New <span className="text-[#D4AF37] italic">Digital Oil</span>
-          </h1>
-          <p className="text-gray-400 text-lg md:text-xl max-w-3xl mx-auto leading-relaxed">
-            In the AI era, tokens and compute have replaced traditional physical resources as the absolute measure of influence. Rankings now track cumulative burn since January 2025 and the average monthly burn rate behind it.
-          </p>
-        </section>
-
-        {/* Active Leaderboard */}
-        <section id="rankings" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-center mb-8">
-            <div className="inline-flex bg-[#111] p-1 rounded-xl border border-white/10">
-              <button
-                onClick={() => setActiveTab('individual')}
-                className={clsx(
-                  "px-8 py-3 rounded-lg text-sm font-bold uppercase tracking-wider transition-all",
-                  activeTab === 'individual' 
-                    ? "bg-[#D4AF37] text-black shadow-lg" 
-                    : "text-gray-400 hover:text-white hover:bg-white/5"
-                )}
-              >
-                Individuals
-              </button>
-              <button
-                onClick={() => setActiveTab('enterprise')}
-                className={clsx(
-                  "px-8 py-3 rounded-lg text-sm font-bold uppercase tracking-wider transition-all",
-                  activeTab === 'enterprise' 
-                    ? "bg-[#D4AF37] text-black shadow-lg" 
-                    : "text-gray-400 hover:text-white hover:bg-white/5"
-                )}
-              >
-                Enterprises
-              </button>
-            </div>
-          </div>
-          <Leaderboard data={filteredData} />
-        </section>
-
-        {/* Methodology Section */}
-        <Methodology />
-
-        {/* GitHub Repo Intake */}
-        <ErrorBoundary>
-          <GitHubRepoIntake />
-        </ErrorBoundary>
-
-        {/* Data Engine Agent Section */}
-        <section id="data-engine" className="px-4 sm:px-6 lg:px-8">
+        {sharedProofUserId ? (
           <ErrorBoundary>
-            <AgentDashboard />
+            <SharedProofPage userId={sharedProofUserId} />
           </ErrorBoundary>
-        </section>
+        ) : (
+          <>
+            {/* Hero Section */}
+            <section className="max-w-7xl mx-auto px-4 py-16 text-center sm:px-6 sm:py-20 lg:px-8">
+              <h1 className="mb-6 text-4xl font-serif font-bold tracking-tight sm:text-5xl md:text-7xl">
+                The New <span className="text-[#D4AF37] italic">Digital Oil</span>
+              </h1>
+              <p className="mx-auto max-w-3xl text-base leading-relaxed text-gray-400 sm:text-lg md:text-xl">
+                In the AI era, tokens and compute have replaced traditional physical resources as the absolute measure of influence. Rankings now track cumulative burn since January 2025 and the average monthly burn rate behind it.
+              </p>
+            </section>
 
-        {/* Proof of Compute Section */}
-        <section id="submit-proof">
-          <ErrorBoundary>
-            <ProofOfCompute />
-          </ErrorBoundary>
-        </section>
+            {/* Active Leaderboard */}
+            <section id="rankings" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="mb-8 flex justify-center">
+                <div className="inline-flex rounded-xl border border-white/10 bg-[#111] p-1">
+                  <button
+                    onClick={() => setActiveTab('individual')}
+                    className={clsx(
+                      "rounded-lg px-5 py-3 text-xs font-bold uppercase tracking-wider transition-all sm:px-8 sm:text-sm",
+                      activeTab === 'individual' 
+                        ? "bg-[#D4AF37] text-black shadow-lg" 
+                        : "text-gray-400 hover:text-white hover:bg-white/5"
+                    )}
+                  >
+                    Individuals
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('enterprise')}
+                    className={clsx(
+                      "rounded-lg px-5 py-3 text-xs font-bold uppercase tracking-wider transition-all sm:px-8 sm:text-sm",
+                      activeTab === 'enterprise' 
+                        ? "bg-[#D4AF37] text-black shadow-lg" 
+                        : "text-gray-400 hover:text-white hover:bg-white/5"
+                    )}
+                  >
+                    Enterprises
+                  </button>
+                </div>
+              </div>
+              <Leaderboard data={filteredData} />
+            </section>
+
+            {/* Methodology Section */}
+            <Methodology />
+
+            {/* GitHub Repo Intake */}
+            <ErrorBoundary>
+              <GitHubRepoIntake />
+            </ErrorBoundary>
+
+            {/* Data Engine Agent Section */}
+            <section id="data-engine" className="px-4 sm:px-6 lg:px-8">
+              <ErrorBoundary>
+                <AgentDashboard />
+              </ErrorBoundary>
+            </section>
+
+            {/* Proof of Compute Section */}
+            <section id="submit-proof">
+              <ErrorBoundary>
+                <ProofOfCompute />
+              </ErrorBoundary>
+            </section>
+          </>
+        )}
       </main>
 
-      {/* Chatbot */}
-      <ErrorBoundary>
-        <Chatbot />
-      </ErrorBoundary>
+      {sharedProofUserId ? null : (
+        <ErrorBoundary>
+          <Chatbot />
+        </ErrorBoundary>
+      )}
 
       {/* Footer */}
-      <footer className="border-t border-white/10 bg-black py-12 text-center text-sm text-gray-500 font-mono">
+      <footer className="border-t border-white/10 bg-black px-4 py-12 text-center text-sm text-gray-500 font-mono">
         <p>Token Forbes © {new Date().getFullYear()}. Data is estimated via proxy metrics and voluntary disclosure.</p>
         <p className="mt-2">1 SET = 1 Standard Equivalent Token</p>
       </footer>

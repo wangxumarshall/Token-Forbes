@@ -6,6 +6,7 @@ import { evaluateGitHubRepo, GitHubRepoEvaluation } from '../services/githubRank
 import { saveGitHubRanking } from '../services/leaderboardStore';
 import { formatNumber, formatTokens } from '../utils/format';
 import { normalizeAvatarUrl } from '../utils/avatar';
+import LoginMenu from './LoginMenu';
 
 export default function GitHubRepoIntake() {
   const [repoUrl, setRepoUrl] = useState('');
@@ -79,18 +80,18 @@ export default function GitHubRepoIntake() {
   };
 
   return (
-    <section id="github-intake" className="py-24 border-t border-white/10 bg-black">
+    <section id="github-intake" className="border-t border-white/10 bg-black py-20 sm:py-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-3xl mx-auto mb-14">
-          <h2 className="font-serif text-4xl md:text-5xl font-bold text-white mb-6">
+          <h2 className="mb-6 font-serif text-3xl font-bold text-white sm:text-4xl md:text-5xl">
             GitHub <span className="text-[#D4AF37] italic">Repo Intake</span>
           </h2>
-          <p className="text-gray-400 text-lg leading-relaxed">
+          <p className="text-base leading-relaxed text-gray-400 sm:text-lg">
             Paste any public GitHub repository URL. We convert the last 30 days of contributor commits, additions, and deletions into an AI coding leaderboard, then optionally sync it into the live database.
           </p>
         </div>
 
-        <div className="bg-[#111] border border-white/10 rounded-3xl p-8 md:p-10 shadow-2xl">
+        <div className="rounded-3xl border border-white/10 bg-[#111] p-5 shadow-2xl sm:p-8 md:p-10">
           <form onSubmit={handleEvaluate} className="grid lg:grid-cols-[1fr_auto] gap-4 items-start">
             <div>
               <label className="block text-xs font-mono uppercase tracking-[0.3em] text-gray-500 mb-3">
@@ -114,7 +115,7 @@ export default function GitHubRepoIntake() {
             <button
               type="submit"
               disabled={isEvaluating}
-              className="h-[58px] px-8 rounded-2xl bg-[#D4AF37] text-black font-bold flex items-center justify-center gap-2 hover:bg-[#b8952b] transition-colors disabled:opacity-60"
+              className="flex h-[58px] w-full items-center justify-center gap-2 rounded-2xl bg-[#D4AF37] px-8 font-bold text-black transition-colors hover:bg-[#b8952b] disabled:opacity-60 lg:w-auto"
             >
               {isEvaluating ? (
                 <>
@@ -148,21 +149,21 @@ export default function GitHubRepoIntake() {
               animate={{ opacity: 1, y: 0 }}
               className="mt-10 space-y-8"
             >
-              <div className="grid xl:grid-cols-[1.4fr_1fr] gap-6">
-                <div className="bg-black/50 rounded-3xl border border-white/5 p-6">
-                  <div className="flex items-start justify-between gap-4 mb-6">
-                    <div className="flex items-center gap-4">
+              <div className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
+                <div className="rounded-3xl border border-white/5 bg-black/50 p-5 sm:p-6">
+                  <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex items-center gap-4 min-w-0">
                       <img
                         src={normalizeAvatarUrl(evaluation.repo.ownerAvatar, evaluation.repo.owner)}
                         alt={evaluation.repo.owner}
                         className="w-14 h-14 rounded-2xl border border-white/10 object-cover"
                         referrerPolicy="no-referrer"
                       />
-                      <div>
+                      <div className="min-w-0">
                         <div className="text-xs font-mono uppercase tracking-[0.3em] text-gray-500 mb-1">
                           Repository Snapshot
                         </div>
-                        <h3 className="text-2xl font-bold text-white">{evaluation.repo.fullName}</h3>
+                        <h3 className="break-words text-xl font-bold text-white sm:text-2xl">{evaluation.repo.fullName}</h3>
                         <a
                           href={evaluation.repo.url}
                           target="_blank"
@@ -178,7 +179,7 @@ export default function GitHubRepoIntake() {
                       type="button"
                       onClick={handleSave}
                       disabled={isSaving || isLoggingIn}
-                      className="px-5 py-3 rounded-2xl bg-white/5 border border-white/10 text-white text-sm font-bold hover:bg-white/10 transition-colors disabled:opacity-50 flex items-center gap-2"
+                      className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-white/10 disabled:opacity-50 sm:w-auto"
                     >
                       {isSaving ? (
                         <>
@@ -194,27 +195,27 @@ export default function GitHubRepoIntake() {
                     </button>
                   </div>
 
-                  <div className="grid md:grid-cols-4 gap-4">
-                    <div className="bg-[#111] rounded-2xl border border-white/5 p-4">
+                  <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+                    <div className="rounded-2xl border border-white/5 bg-[#111] p-4">
                       <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Top Contributors</div>
                       <div className="text-xl font-mono text-white">{evaluation.individualEntities.length}</div>
                     </div>
-                    <div className="bg-[#111] rounded-2xl border border-white/5 p-4">
+                    <div className="rounded-2xl border border-white/5 bg-[#111] p-4">
                       <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Total Since Jan 2025</div>
-                      <div className="text-xl font-mono text-[#D4AF37]">{formatTokens(totalTokens)}</div>
+                      <div className="break-all text-xl font-mono text-[#D4AF37]">{formatTokens(totalTokens)}</div>
                     </div>
-                    <div className="bg-[#111] rounded-2xl border border-white/5 p-4">
+                    <div className="rounded-2xl border border-white/5 bg-[#111] p-4">
                       <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Stars</div>
                       <div className="text-xl font-mono text-white">{formatNumber(evaluation.repo.stars)}</div>
                     </div>
-                    <div className="bg-[#111] rounded-2xl border border-white/5 p-4">
+                    <div className="rounded-2xl border border-white/5 bg-[#111] p-4">
                       <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Repo AI Score</div>
                       <div className="text-xl font-mono text-white">{Math.round(evaluation.repo.aiNativeScore * 100)}%</div>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-black/50 rounded-3xl border border-white/5 p-6">
+                <div className="rounded-3xl border border-white/5 bg-black/50 p-5 sm:p-6">
                   <div className="flex items-center gap-3 mb-4">
                     <Database className="w-5 h-5 text-[#D4AF37]" />
                     <h4 className="text-lg font-bold text-white">Methodology Snapshot</h4>
@@ -225,61 +226,88 @@ export default function GitHubRepoIntake() {
                     ))}
                   </ol>
                   {!currentUser && (
-                    <div className="mt-4 flex flex-wrap gap-3">
-                      <button
-                        type="button"
-                        onClick={() => login('github')}
-                        disabled={isLoggingIn}
-                        className="text-xs text-[#D4AF37] hover:text-[#f1d77a] transition-colors disabled:opacity-50"
-                      >
-                        {isLoggingIn && activeProvider === 'github'
-                          ? 'Connecting GitHub…'
-                          : 'Attribute saved audits with GitHub'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => login('google')}
-                        disabled={isLoggingIn}
-                        className="text-xs text-gray-400 hover:text-white transition-colors disabled:opacity-50"
-                      >
-                        {isLoggingIn && activeProvider === 'google'
-                          ? 'Connecting Google…'
-                          : 'or use Google'}
-                      </button>
+                    <div className="mt-4 flex flex-wrap items-center gap-3">
+                      <LoginMenu
+                        login={login}
+                        isLoggingIn={isLoggingIn}
+                        activeProvider={activeProvider}
+                        label="Login"
+                        align="left"
+                        buttonClassName="border-[#D4AF37]/20 bg-[#D4AF37]/10 text-[#D4AF37] hover:bg-[#D4AF37]/15"
+                      />
+                      <span className="text-xs text-gray-500">
+                        Login to attribute saved audits to your GitHub or Google account.
+                      </span>
                     </div>
                   )}
                 </div>
               </div>
 
-              <div className="bg-black/50 rounded-3xl border border-white/5 overflow-hidden">
-                <div className="grid grid-cols-12 gap-4 px-6 py-4 border-b border-white/5 text-[11px] font-mono uppercase tracking-[0.25em] text-gray-500">
-                  <div className="col-span-1">#</div>
-                  <div className="col-span-4">Contributor</div>
-                  <div className="col-span-3 text-right">Total Since Jan 2025</div>
-                  <div className="col-span-2 text-right">Avg Monthly</div>
-                  <div className="col-span-2 text-right">Confidence</div>
-                </div>
-                <div className="divide-y divide-white/5">
+              <div className="overflow-hidden rounded-3xl border border-white/5 bg-black/50">
+                <div className="divide-y divide-white/5 md:hidden">
                   {evaluation.individualEntities.map((entity) => (
-                    <div key={entity.id} className="grid grid-cols-12 gap-4 items-center px-6 py-4 hover:bg-white/5 transition-colors">
-                      <div className="col-span-1 font-serif text-xl text-gray-500">{entity.rank}</div>
-                      <div className="col-span-4 flex items-center gap-3">
+                    <div key={entity.id} className="p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="pt-1 font-serif text-xl text-gray-500">{entity.rank}</div>
                         <img
                           src={normalizeAvatarUrl(entity.avatar, entity.name)}
                           alt={entity.name}
-                          className="w-11 h-11 rounded-full border border-white/10 object-cover"
+                          className="h-11 w-11 rounded-full border border-white/10 object-cover"
                           referrerPolicy="no-referrer"
                         />
-                        <div>
-                          <div className="text-white font-semibold">{entity.name}</div>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-white font-semibold break-words">{entity.name}</div>
                           <div className="text-xs text-gray-500">{entity.title}</div>
+                          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                            <div className="rounded-xl border border-white/5 bg-[#111] p-3">
+                              <div className="text-[10px] uppercase tracking-[0.2em] text-gray-500">Total</div>
+                              <div className="mt-2 break-all font-mono text-sm text-[#D4AF37]">{formatTokens(entity.totalTokens)}</div>
+                            </div>
+                            <div className="rounded-xl border border-white/5 bg-[#111] p-3">
+                              <div className="text-[10px] uppercase tracking-[0.2em] text-gray-500">Avg Monthly</div>
+                              <div className="mt-2 break-all font-mono text-sm text-gray-200">{formatTokens(entity.tokensPerMonth)}</div>
+                            </div>
+                            <div className="rounded-xl border border-white/5 bg-[#111] p-3">
+                              <div className="text-[10px] uppercase tracking-[0.2em] text-gray-500">Confidence</div>
+                              <div className="mt-2 font-mono text-sm text-gray-400">±{entity.confidenceInterval}%</div>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                      <div className="col-span-3 text-right font-mono text-[#D4AF37]">{formatTokens(entity.totalTokens)}</div>
-                      <div className="col-span-2 text-right font-mono text-gray-300">{formatTokens(entity.tokensPerMonth)}</div>
-                      <div className="col-span-2 text-right font-mono text-gray-500">±{entity.confidenceInterval}%</div>
                     </div>
                   ))}
+                </div>
+
+                <div className="hidden md:block">
+                  <div className="grid grid-cols-12 gap-4 border-b border-white/5 px-6 py-4 text-[11px] font-mono uppercase tracking-[0.25em] text-gray-500">
+                    <div className="col-span-1">#</div>
+                    <div className="col-span-4">Contributor</div>
+                    <div className="col-span-3 text-right">Total Since Jan 2025</div>
+                    <div className="col-span-2 text-right">Avg Monthly</div>
+                    <div className="col-span-2 text-right">Confidence</div>
+                  </div>
+                  <div className="divide-y divide-white/5">
+                    {evaluation.individualEntities.map((entity) => (
+                      <div key={entity.id} className="grid grid-cols-12 gap-4 items-center px-6 py-4 hover:bg-white/5 transition-colors">
+                        <div className="col-span-1 font-serif text-xl text-gray-500">{entity.rank}</div>
+                        <div className="col-span-4 flex items-center gap-3">
+                          <img
+                            src={normalizeAvatarUrl(entity.avatar, entity.name)}
+                            alt={entity.name}
+                            className="w-11 h-11 rounded-full border border-white/10 object-cover"
+                            referrerPolicy="no-referrer"
+                          />
+                          <div>
+                            <div className="text-white font-semibold">{entity.name}</div>
+                            <div className="text-xs text-gray-500">{entity.title}</div>
+                          </div>
+                        </div>
+                        <div className="col-span-3 text-right font-mono text-[#D4AF37] break-all">{formatTokens(entity.totalTokens)}</div>
+                        <div className="col-span-2 text-right font-mono text-gray-300 break-all">{formatTokens(entity.tokensPerMonth)}</div>
+                        <div className="col-span-2 text-right font-mono text-gray-500">±{entity.confidenceInterval}%</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </motion.div>

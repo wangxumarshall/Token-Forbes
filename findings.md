@@ -18,3 +18,18 @@
 - The Vercel project now has `GITHUB_TOKEN` configured across Production, Preview, and Development. A fresh production deployment is live and aliased to `token-forbes.vercel.app`.
 - AI features no longer need `GEMINI_API_KEY`. The frontend now calls a server-side `api/ai` route, and OpenRouter credentials stay in Vercel environment variables.
 - `stepfun/step-3.5-flash:free` is a reasoning-first model on OpenRouter. Short output budgets can lead to `content: null` even on successful responses, so the chat proxy now allocates a larger `max_tokens` budget for user-visible answers.
+
+## 2026-03-21
+- The current app styling is strong on laptop screens but still contains several desktop-biased surfaces likely to break down on phones: sticky header navigation, ticker density, leaderboard row layout, proof share/certificate screens, and wide analytical cards.
+- The mobile pass should prioritize eliminating horizontal overflow, improving vertical rhythm, and preserving readability before chasing pixel-for-pixel parity with desktop composition.
+- `src/components/Leaderboard.tsx` and the contributor section inside `src/components/GitHubRepoIntake.tsx` are still desktop tables built on `grid-cols-12`, which will compress unreadably on narrow screens unless they get dedicated mobile card layouts.
+- `src/components/Header.tsx` keeps source/login/profile actions in a single row with a fixed `h-16`, so small screens can easily run out of horizontal space.
+- `src/components/Chatbot.tsx` uses a fixed `w-96 h-[32rem]` floating panel anchored at `right-6`, which is likely too wide and too tall for many phones.
+- `src/components/ProofOfCompute.tsx`, `src/components/SharedProofPage.tsx`, `src/components/AgentDashboard.tsx`, and `src/components/Methodology.tsx` all rely on generous desktop paddings and multi-column sections that need smaller spacing and cleaner stacking on mobile.
+- The responsive implementation keeps the desktop table layouts from `md` upward, but swaps in mobile-first card layouts below `md` for the global leaderboard and GitHub contributor audit sections.
+- Global overflow protection is now enforced in `src/index.css`, and mobile navigation/ticker/chat adjustments reduce the biggest narrow-screen layout failures without changing the desktop visual direction.
+- The live ranking stack is still methodologically mixed: `src/App.tsx` merges normalized `allMockEntities`, global GitHub snapshot entities, saved repo audits, and self-reported proofs into one sorted leaderboard.
+- Public GitHub rankings are the most concretely implemented ingestion path today, but they are still a proxy model built from a 30-day public activity window, hand-tuned heuristics in `src/utils/tokenMath.ts`, and a search universe biased toward popular repos.
+- The global enterprise ranking is currently a modeled list built from hardcoded `GLOBAL_ENTERPRISE_SEEDS`, manual signal weights, and optional open-source calibration, so it is not yet an evidence ledger driven by raw disclosures.
+- Proof of Compute submissions are persisted cleanly, but they are still user-entered monthly token numbers without verification artifacts; once saved, they currently merge into the same main leaderboard as higher-trust sources.
+- The README and methodology page describe broader future data sources such as direct disclosures, partner feeds, cloud bills, and external proxy indicators, but those source-specific ingestion pipelines are not yet implemented in the production code.

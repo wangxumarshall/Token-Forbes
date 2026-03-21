@@ -62,11 +62,11 @@ export default function Chatbot() {
       {/* Floating Button */}
       <motion.button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 p-4 bg-[#D4AF37] text-black rounded-full shadow-2xl hover:bg-[#b8952b] transition-colors z-50 flex items-center justify-center"
+        className="fixed bottom-4 right-4 z-50 flex items-center justify-center rounded-full bg-[#D4AF37] p-3 text-black shadow-2xl transition-colors hover:bg-[#b8952b] sm:bottom-6 sm:right-6 sm:p-4"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
       >
-        <MessageSquare className="w-6 h-6" />
+        <MessageSquare className="h-5 w-5 sm:h-6 sm:w-6" />
       </motion.button>
 
       {/* Chat Window */}
@@ -76,7 +76,7 @@ export default function Chatbot() {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed bottom-24 right-6 w-96 h-[32rem] bg-[#111] border border-white/10 rounded-2xl shadow-2xl flex flex-col z-50 overflow-hidden"
+            className="fixed bottom-20 left-3 right-3 z-50 flex h-[min(32rem,calc(100vh-6.5rem))] flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#111] shadow-2xl sm:bottom-24 sm:left-auto sm:right-6 sm:w-96 sm:h-[32rem]"
           >
             {/* Header */}
             <div className="p-4 bg-black border-b border-white/10 flex items-center justify-between">
@@ -95,7 +95,7 @@ export default function Chatbot() {
             </div>
 
             {/* Mode Toggle */}
-            <div className="px-4 py-2 bg-[#1a1a1a] border-b border-white/5 flex items-center justify-between text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/5 bg-[#1a1a1a] px-4 py-2 text-xs">
               <span className="text-gray-400">Response Mode:</span>
               <button
                 onClick={() => setIsFastMode(!isFastMode)}
@@ -113,11 +113,11 @@ export default function Chatbot() {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#0a0a0a]">
+            <div className="flex-1 space-y-4 overflow-y-auto bg-[#0a0a0a] p-3 sm:p-4">
               {messages.map((msg, i) => (
                 <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <div
-                    className={`max-w-[80%] p-3 rounded-2xl text-sm ${
+                    className={`max-w-[85%] rounded-2xl p-3 text-sm sm:max-w-[80%] ${
                       msg.role === 'user'
                         ? 'bg-[#D4AF37] text-black rounded-br-sm'
                         : 'bg-[#1a1a1a] text-gray-200 border border-white/5 rounded-bl-sm markdown-body'

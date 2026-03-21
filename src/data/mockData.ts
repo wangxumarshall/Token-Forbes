@@ -20,6 +20,7 @@ export interface Entity {
   title: string;
   company: string;
   avatar: string;
+  profileUrl?: string;
   totalTokens: number;
   tokensPerDay: number;
   tokensPerMonth: number;

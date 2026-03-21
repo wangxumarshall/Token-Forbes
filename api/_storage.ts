@@ -68,6 +68,34 @@ function getStoragePreference(): ServerStorageProvider | 'auto' {
   return 'auto';
 }
 
+function getTimestampValue(value?: string | null) {
+  if (!value) {
+    return 0;
+  }
+
+  const parsed = new Date(value).getTime();
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+function mergeProofRecords(primary: StoredProof[], secondary: StoredProof[]) {
+  const merged = new Map<string, StoredProof>();
+
+  for (const record of [...secondary, ...primary]) {
+    if (!record?.userId) {
+      continue;
+    }
+
+    const existing = merged.get(record.userId);
+    if (!existing || getTimestampValue(record.updatedAt) >= getTimestampValue(existing.updatedAt)) {
+      merged.set(record.userId, record);
+    }
+  }
+
+  return Array.from(merged.values()).sort(
+    (left, right) => getTimestampValue(right.updatedAt) - getTimestampValue(left.updatedAt),
+  );
+}
+
 function getSqliteDbPath() {
   const explicit = (process.env.SQLITE_DB_PATH || process.env.TOKEN_FORBES_SQLITE_PATH || '').trim();
   if (explicit) {
@@ -324,35 +352,108 @@ async function resolveServerStorage(): Promise<ServerStorageAdapter> {
   throw new Error(message || STORAGE_NOT_CONFIGURED_ERROR);
 }
 
+async function resolvePersistentProofStorage() {
+  if (isBlobStoreConfigured()) {
+    return createBlobAdapter();
+  }
+
+  return resolveServerStorage();
+}
+
 export async function loadLeaderboardSnapshot() {
-  const storage = await resolveServerStorage();
-  const [proofs, githubRankings] = await Promise.all([
-    storage.listProofs(),
-    storage.listGitHubRankings(),
+  const [proofStorage, rankingStorage] = await Promise.all([
+    resolvePersistentProofStorage(),
+    resolveServerStorage(),
   ]);
+
+  const [primaryProofs, githubRankings] = await Promise.all([
+    proofStorage.listProofs(),
+    rankingStorage.listGitHubRankings(),
+  ]);
+
+  let proofs = primaryProofs;
+
+  if (proofStorage.provider !== rankingStorage.provider) {
+    try {
+      const secondaryProofs = await rankingStorage.listProofs();
+      proofs = mergeProofRecords(primaryProofs, secondaryProofs);
+
+      if (proofStorage.provider === 'vercel-blob') {
+        const primaryIds = new Set(primaryProofs.map((record) => record.userId));
+        await Promise.all(
+          secondaryProofs
+            .filter((record) => record.userId && !primaryIds.has(record.userId))
+            .map(async (record) => {
+              try {
+                await proofStorage.writeProof(record);
+              } catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                console.warn(`Failed to backfill proof ${record.userId} into persistent storage: ${message}`);
+              }
+            }),
+        );
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn(`Failed to merge secondary proof storage: ${message}`);
+    }
+  }
 
   return {
     proofs,
     githubRankings,
-    provider: storage.provider,
+    provider: rankingStorage.provider,
   };
 }
 
 export async function readStoredProof(userId: string) {
-  const storage = await resolveServerStorage();
+  const proofStorage = await resolvePersistentProofStorage();
+  let record = await proofStorage.readProof(userId);
+
+  if (!record && proofStorage.provider !== 'sqlite') {
+    try {
+      const fallbackStorage = await resolveServerStorage();
+      if (fallbackStorage.provider !== proofStorage.provider) {
+        record = await fallbackStorage.readProof(userId);
+
+        if (record && proofStorage.provider === 'vercel-blob') {
+          try {
+            await proofStorage.writeProof(record);
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            console.warn(`Failed to migrate proof ${userId} into persistent storage: ${message}`);
+          }
+        }
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn(`Failed to read fallback proof storage for ${userId}: ${message}`);
+    }
+  }
+
   return {
-    record: await storage.readProof(userId),
-    provider: storage.provider,
+    record,
+    provider: proofStorage.provider,
   };
 }
 
 export async function writeStoredProof(record: StoredProof) {
-  const storage = await resolveServerStorage();
-  await storage.writeProof(record);
+  const proofStorage = await resolvePersistentProofStorage();
+  await proofStorage.writeProof(record);
+
+  try {
+    const secondaryStorage = await resolveServerStorage();
+    if (secondaryStorage.provider !== proofStorage.provider) {
+      await secondaryStorage.writeProof(record);
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`Failed to mirror proof ${record.userId} into secondary storage: ${message}`);
+  }
 
   return {
     record,
-    provider: storage.provider,
+    provider: proofStorage.provider,
   };
 }
 

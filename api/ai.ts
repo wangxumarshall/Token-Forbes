@@ -127,14 +127,65 @@ async function callOpenRouter(
   return {
     data: parsed,
     text,
+    rawText,
   };
 }
 
 function parseJsonObject<T>(text: string) {
   const trimmed = text.trim();
+  if (!trimmed) {
+    throw new Error('AI provider returned an empty JSON response.');
+  }
+
   const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
   const payload = fenced?.[1] || trimmed;
   return JSON.parse(payload) as T;
+}
+
+function collectStructuredResponseCandidates(response: {
+  data: any;
+  text: string;
+  rawText: string;
+}) {
+  const message = response.data?.choices?.[0]?.message;
+  const toolCalls = Array.isArray(message?.tool_calls) ? message.tool_calls : [];
+  const candidates = [
+    response.text,
+    extractTextContent(message?.content),
+    ...toolCalls.map((toolCall) =>
+      typeof toolCall?.function?.arguments === 'string' ? toolCall.function.arguments : '',
+    ),
+  ];
+
+  const seen = new Set<string>();
+
+  return candidates
+    .map((candidate) => (typeof candidate === 'string' ? candidate.trim() : ''))
+    .filter((candidate) => {
+      if (!candidate || seen.has(candidate)) {
+        return false;
+      }
+
+      seen.add(candidate);
+      return true;
+    });
+}
+
+function parseStructuredResponse<T>(
+  response: { data: any; text: string; rawText: string },
+  label: string,
+) {
+  const candidates = collectStructuredResponseCandidates(response);
+
+  for (const candidate of candidates) {
+    try {
+      return parseJsonObject<T>(candidate);
+    } catch {
+      continue;
+    }
+  }
+
+  throw new Error(`AI provider returned an incomplete ${label} JSON response. Please retry.`);
 }
 
 function validateWealthStructure(value: unknown) {
@@ -229,9 +280,9 @@ Return ONLY a JSON object with these keys:
 The estimate should be in raw token numbers, and should reflect average monthly burn, not yearly totals.
   `.trim();
 
-  const response = await callOpenRouter(request, {
+  const requestBody = {
     temperature: 0.2,
-    max_tokens: 1400,
+    max_tokens: 1800,
     response_format: { type: 'json_object' },
     plugins: [
       { id: 'web', max_results: 5 },
@@ -241,9 +292,39 @@ The estimate should be in raw token numbers, and should reflect average monthly 
       { role: 'system', content: 'You are a careful AI infrastructure analyst. Return machine-parseable JSON only.' },
       { role: 'user', content: prompt },
     ],
-  });
+  };
 
-  const parsed = parseJsonObject<Partial<AgentEvaluationResult>>(response.text);
+  let parsed: Partial<AgentEvaluationResult>;
+
+  try {
+    const response = await callOpenRouter(request, requestBody);
+    parsed = parseStructuredResponse<Partial<AgentEvaluationResult>>(response, 'evaluation');
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!message.includes('incomplete evaluation JSON response')) {
+      throw error;
+    }
+
+    const fallbackResponse = await callOpenRouter(request, {
+      ...requestBody,
+      max_tokens: 2200,
+      response_format: undefined,
+      messages: [
+        {
+          role: 'system',
+          content:
+            'You are a careful AI infrastructure analyst. Return exactly one JSON object and no markdown.',
+        },
+        {
+          role: 'user',
+          content: `${prompt}\n\nImportant: return a single valid JSON object only. No prose before or after the JSON.`,
+        },
+      ],
+    });
+
+    parsed = parseStructuredResponse<Partial<AgentEvaluationResult>>(fallbackResponse, 'evaluation');
+  }
+
   const estimatedTokensPerMonth = Number(parsed.estimatedTokensPerMonth || 0);
   const confidenceInterval = Number(parsed.confidenceInterval || 0);
   const sourceTag = typeof parsed.sourceTag === 'string' ? parsed.sourceTag : 'Model Estimation';
@@ -289,7 +370,7 @@ Return ONLY a JSON object:
 Use the web plugin. Prefer official sources, cloud provider docs, company engineering blogs, and public infrastructure announcements.
   `.trim();
 
-  const response = await callOpenRouter(request, {
+  const requestBody = {
     temperature: 0.2,
     max_tokens: 900,
     response_format: { type: 'json_object' },
@@ -301,9 +382,39 @@ Use the web plugin. Prefer official sources, cloud provider docs, company engine
       { role: 'system', content: 'You are a careful infrastructure research assistant. Return machine-parseable JSON only.' },
       { role: 'user', content: prompt },
     ],
-  });
+  };
 
-  const parsed = parseJsonObject<Partial<LocationResult>>(response.text);
+  let parsed: Partial<LocationResult>;
+
+  try {
+    const response = await callOpenRouter(request, requestBody);
+    parsed = parseStructuredResponse<Partial<LocationResult>>(response, 'location');
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!message.includes('incomplete location JSON response')) {
+      throw error;
+    }
+
+    const fallbackResponse = await callOpenRouter(request, {
+      ...requestBody,
+      max_tokens: 1200,
+      response_format: undefined,
+      messages: [
+        {
+          role: 'system',
+          content:
+            'You are a careful infrastructure research assistant. Return exactly one JSON object and no markdown.',
+        },
+        {
+          role: 'user',
+          content: `${prompt}\n\nImportant: return a single valid JSON object only. No prose before or after the JSON.`,
+        },
+      ],
+    });
+
+    parsed = parseStructuredResponse<Partial<LocationResult>>(fallbackResponse, 'location');
+  }
+
   const links = Array.isArray(parsed.links)
     ? parsed.links
         .map((item) => {
@@ -324,7 +435,7 @@ Use the web plugin. Prefer official sources, cloud provider docs, company engine
     : [];
 
   return {
-    text: typeof parsed.text === 'string' ? parsed.text : response.text,
+    text: typeof parsed.text === 'string' ? parsed.text : 'No summary returned.',
     links,
   };
 }

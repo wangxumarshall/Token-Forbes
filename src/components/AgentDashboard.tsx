@@ -50,8 +50,8 @@ export default function AgentDashboard() {
   };
 
   return (
-    <div className="bg-[#111] border border-white/10 rounded-2xl p-8 max-w-4xl mx-auto my-16">
-      <div className="flex items-center gap-4 mb-8">
+    <div className="mx-auto my-10 max-w-4xl rounded-2xl border border-white/10 bg-[#111] p-5 sm:my-16 sm:p-8">
+      <div className="mb-8 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
         <div className="p-3 bg-[#D4AF37]/10 rounded-xl">
           <Database className="w-8 h-8 text-[#D4AF37]" />
         </div>
@@ -61,7 +61,7 @@ export default function AgentDashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-8">
         {/* Input Form */}
         <div className="space-y-6">
           <div className="bg-black/50 p-6 rounded-xl border border-white/5">
@@ -120,7 +120,7 @@ export default function AgentDashboard() {
           </div>
 
           {/* Terminal Logs */}
-          <div className="bg-black p-4 rounded-xl border border-white/10 font-mono text-xs h-64 overflow-y-auto">
+          <div className="h-52 overflow-y-auto rounded-xl border border-white/10 bg-black p-4 font-mono text-[11px] sm:h-64 sm:text-xs">
             <div className="text-gray-500 mb-2">// Agent Execution Logs</div>
             {logs.map((log, i) => (
               <div key={i} className={log.includes('ERROR') ? 'text-red-400' : 'text-green-400'}>
@@ -134,7 +134,7 @@ export default function AgentDashboard() {
         </div>
 
         {/* Results Panel */}
-        <div className="bg-[#1a1a1a] p-6 rounded-xl border border-white/5 flex flex-col">
+        <div className="flex flex-col rounded-xl border border-white/5 bg-[#1a1a1a] p-5 sm:p-6">
           <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
             <CheckCircle2 className="w-5 h-5 text-green-500" />
             Evaluation Results
@@ -153,7 +153,7 @@ export default function AgentDashboard() {
             >
               <div className="bg-black/50 p-4 rounded-lg border border-white/5">
                 <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">Estimated Monthly Burn</div>
-                <div className="text-3xl font-mono font-bold text-[#D4AF37]">
+                <div className="break-all text-2xl font-mono font-bold text-[#D4AF37] sm:text-3xl">
                   {formatTokens(result.estimatedTokensPerMonth)}
                 </div>
                 <div className="text-xs text-gray-400 mt-2">
@@ -189,7 +189,7 @@ export default function AgentDashboard() {
                     <ul className="space-y-2">
                       {mapsResult.links.map((link: any, idx: number) => (
                         <li key={`${link.url}-${idx}`}>
-                          <a href={link.url} target="_blank" rel="noreferrer" className="text-xs text-blue-400 hover:underline flex items-center gap-1">
+                          <a href={link.url} target="_blank" rel="noreferrer" className="flex items-start gap-1 break-words text-xs text-blue-400 hover:underline">
                             <Link2 className="w-3 h-3" />
                             {link.name}
                           </a>

@@ -9,7 +9,7 @@ const COLORS = ['#D4AF37', '#8c7324', '#4a3d13', '#261f0a'];
 
 export default function AssetGraph({ data }: Props) {
   return (
-    <div className="h-48 w-full">
+    <div className="h-40 w-full sm:h-48">
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie
