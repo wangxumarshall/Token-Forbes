@@ -1,8 +1,14 @@
+
+
+
 # Token Forbes
 Token Forbes is a Vite + React app that ranks people and organizations by inferred AI token consumption.
 
 Production:
 - [https://token-forbes.vercel.app](https://token-forbes.vercel.app)
+
+## Background
+In the AI era, tokens and compute have replaced traditional physical resources as the absolute measure of influence. Rankings now track cumulative burn since January 2025 and the average monthly burn rate behind it.
 
 ## What It Does
 
