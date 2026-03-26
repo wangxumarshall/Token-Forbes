@@ -155,7 +155,7 @@ export default function App() {
         const proofMetrics = createEraTokenMetricsFromMonthlyBurn(tokens);
 
         const proofEntity: Entity = {
-          id: proof.userId || Math.random().toString(),
+          id: proof.userId || crypto.randomUUID(),
           rank: 0,
           name: proofName,
           title: categoryLabel,
