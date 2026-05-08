@@ -12,6 +12,7 @@ import Methodology from './components/Methodology';
 import AgentDashboard from './components/AgentDashboard';
 import Chatbot from './components/Chatbot';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import GitHubRepoIntake from './components/GitHubRepoIntake';
 import { allMockEntities, Entity } from './data/mockData';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from './firebase';
@@ -22,69 +23,115 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'individual' | 'enterprise'>('individual');
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, 'proofs'), (snapshot) => {
-      const proofs = snapshot.docs.map(doc => doc.data());
-      
-      // Merge mock entities and proofs
-      let mergedEntities = [...allMockEntities];
-      
-      for (const proof of proofs) {
-        const existingIndex = mergedEntities.findIndex(e => e.name.toLowerCase() === proof.name?.toLowerCase());
-        
-        if (existingIndex >= 0) {
-          // Accumulate tokens
-          const addedTokens = proof.tokens || 0;
-          mergedEntities[existingIndex] = {
-            ...mergedEntities[existingIndex],
-            totalTokens: mergedEntities[existingIndex].totalTokens + addedTokens,
-            tokensPerMonth: mergedEntities[existingIndex].tokensPerMonth + addedTokens,
-            tokensPerYear: mergedEntities[existingIndex].tokensPerYear + (addedTokens * 12),
-            tokensPerDay: mergedEntities[existingIndex].tokensPerDay + (addedTokens / 30),
-            lastUpdated: new Date().toISOString().split('T')[0],
-          };
-        } else {
-          // Add new row
-          const tokens = proof.tokens || 0;
-          let categoryLabel = 'Token Enthusiast';
-          if (tokens >= 1e12) categoryLabel = 'Compute Giant';
-          else if (tokens >= 1e9) categoryLabel = 'Enterprise Whale';
-          else if (tokens >= 1e6) categoryLabel = 'Super Geek';
+    const baseEntities = [...allMockEntities];
+    let proofDocs: any[] = [];
+    let githubDocs: any[] = [];
 
-          mergedEntities.push({
-            id: proof.userId || Math.random().toString(),
-            rank: 0,
-            name: proof.name || 'Unknown',
-            title: categoryLabel,
-            company: 'Independent',
-            avatar: proof.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${proof.name}`,
-            totalTokens: tokens,
-            tokensPerDay: tokens / 30,
-            tokensPerMonth: tokens,
-            tokensPerYear: tokens * 12,
-            confidenceInterval: 0,
-            sourceTag: 'Direct Disclosure',
-            updateFrequency: 'Real-time',
-            lastUpdated: new Date().toISOString().split('T')[0],
-            nextUpdate: 'Real-time',
-            entityType: 'individual',
-            wealthStructure: [{ name: 'Submitted Compute', value: 100 }],
-            description: 'User submitted proof of compute.'
-          });
+    const rebuildLeaderboard = () => {
+      const mergedMap = new Map<string, Entity>();
+
+      for (const entity of baseEntities) {
+        mergedMap.set(entity.id, { ...entity });
+      }
+
+      for (const ranking of githubDocs) {
+        const enterpriseEntity = ranking.enterpriseEntity as Entity | undefined;
+        const individualEntities = (ranking.individualEntities || []) as Entity[];
+
+        if (enterpriseEntity) {
+          mergedMap.set(enterpriseEntity.id, { ...enterpriseEntity });
+        }
+
+        for (const entity of individualEntities) {
+          mergedMap.set(entity.id, { ...entity });
         }
       }
 
-      // Sort by totalTokens descending
-      mergedEntities.sort((a, b) => b.totalTokens - a.totalTokens);
+      for (const proof of proofDocs) {
+        const matchingEntry = Array.from(mergedMap.values()).find(
+          (entity) =>
+            entity.entityType === 'individual' &&
+            entity.name.toLowerCase() === proof.name?.toLowerCase() &&
+            entity.company.toLowerCase() === 'independent',
+        );
 
+        if (matchingEntry) {
+          const addedTokens = proof.tokens || 0;
+          mergedMap.set(matchingEntry.id, {
+            ...matchingEntry,
+            totalTokens: matchingEntry.totalTokens + addedTokens,
+            tokensPerMonth: matchingEntry.tokensPerMonth + addedTokens,
+            tokensPerYear: matchingEntry.tokensPerYear + addedTokens * 12,
+            tokensPerDay: matchingEntry.tokensPerDay + addedTokens / 30,
+            lastUpdated: new Date().toISOString().split('T')[0],
+          });
+          continue;
+        }
+
+        const tokens = proof.tokens || 0;
+        let categoryLabel = 'Token Enthusiast';
+        if (tokens >= 1e12) categoryLabel = 'Compute Giant';
+        else if (tokens >= 1e9) categoryLabel = 'Enterprise Whale';
+        else if (tokens >= 1e6) categoryLabel = 'Super Geek';
+
+        const proofEntity: Entity = {
+          id: proof.userId || Math.random().toString(),
+          rank: 0,
+          name: proof.name || 'Unknown',
+          title: categoryLabel,
+          company: 'Independent',
+          avatar: proof.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${proof.name}`,
+          totalTokens: tokens,
+          tokensPerDay: tokens / 30,
+          tokensPerMonth: tokens,
+          tokensPerYear: tokens * 12,
+          confidenceInterval: 0,
+          sourceTag: 'Direct Disclosure',
+          updateFrequency: 'Real-time',
+          lastUpdated: new Date().toISOString().split('T')[0],
+          nextUpdate: 'Real-time',
+          entityType: 'individual',
+          wealthStructure: [{ name: 'Submitted Compute', value: 100 }],
+          description: 'User submitted proof of compute.',
+        };
+
+        mergedMap.set(proofEntity.id, proofEntity);
+      }
+
+      const mergedEntities = Array.from(mergedMap.values()).sort((a, b) => b.totalTokens - a.totalTokens);
       setLeaderboardData(mergedEntities);
-    }, (error) => {
-      console.error("Error fetching proofs:", error);
-      // Fallback to mock data sorted
-      let fallback = [...allMockEntities].sort((a, b) => b.totalTokens - a.totalTokens);
-      setLeaderboardData(fallback);
-    });
+    };
 
-    return () => unsubscribe();
+    const unsubscribeProofs = onSnapshot(
+      collection(db, 'proofs'),
+      (snapshot) => {
+        proofDocs = snapshot.docs.map((doc) => doc.data());
+        rebuildLeaderboard();
+      },
+      (error) => {
+        console.error('Error fetching proofs:', error);
+        rebuildLeaderboard();
+      },
+    );
+
+    const unsubscribeGitHubRankings = onSnapshot(
+      collection(db, 'github_rankings'),
+      (snapshot) => {
+        githubDocs = snapshot.docs.map((doc) => doc.data());
+        rebuildLeaderboard();
+      },
+      (error) => {
+        console.error('Error fetching GitHub rankings:', error);
+        rebuildLeaderboard();
+      },
+    );
+
+    rebuildLeaderboard();
+
+    return () => {
+      unsubscribeProofs();
+      unsubscribeGitHubRankings();
+    };
   }, []);
 
   const filteredData = leaderboardData
@@ -141,6 +188,11 @@ export default function App() {
         {/* Methodology Section */}
         <Methodology />
 
+        {/* GitHub Repo Intake */}
+        <ErrorBoundary>
+          <GitHubRepoIntake />
+        </ErrorBoundary>
+
         {/* Data Engine Agent Section */}
         <section id="data-engine" className="px-4 sm:px-6 lg:px-8">
           <ErrorBoundary>
@@ -169,4 +221,3 @@ export default function App() {
     </div>
   );
 }
-

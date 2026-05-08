@@ -1,4 +1,4 @@
-import { Target, Compass, Divide, Calculator, FileSearch, ShieldCheck, Database, Search, Users } from 'lucide-react';
+import { Target, Compass, Divide, Calculator, FileSearch, ShieldCheck, Database, Search, Users, Github } from 'lucide-react';
 
 export default function Methodology() {
   return (
@@ -45,7 +45,7 @@ export default function Methodology() {
         <div className="mb-20">
           <h3 className="text-2xl font-serif font-bold text-white mb-8 border-b border-white/10 pb-4">The Data Engine: How We Calculate</h3>
           <p className="text-gray-400 mb-8 max-w-4xl leading-relaxed">
-            Outputting individual and enterprise lists requires overcoming extreme data acquisition challenges. We use a mixed estimation method combining public disclosure, partner data, strong proxy variables, and ML regression across three main paths:
+            Outputting individual and enterprise lists requires overcoming extreme data acquisition challenges. We now blend public GitHub contributor statistics, self-reported proofs, partner data, strong proxy variables, and model-based estimation across four main paths:
           </p>
           <div className="grid md:grid-cols-3 gap-8">
             <div className="bg-[#111] p-8 rounded-2xl border border-white/10">
@@ -72,6 +72,15 @@ export default function Methodology() {
               <div className="text-xs text-[#D4AF37] uppercase tracking-wider mb-3">For Super Geeks & Devs</div>
               <p className="text-gray-400 text-sm leading-relaxed">
                 <strong>Social Monetization:</strong> A verified certification system allowing users to input daily/monthly consumption. We issue "Token Billionaire" virtual badges and social share cards to incentivize global developers to join the leaderboard.
+              </p>
+            </div>
+            <div className="bg-[#111] p-8 rounded-2xl border border-white/10 md:col-span-3">
+              <Github className="w-8 h-8 text-violet-400 mb-6" />
+              <h4 className="text-xl font-bold text-white mb-4">4. Public GitHub Proxy Ranking</h4>
+              <div className="text-xs text-[#D4AF37] uppercase tracking-wider mb-3">For Open Source AI Builders</div>
+              <p className="text-gray-400 text-sm leading-relaxed">
+                <strong>Contributor Stats:</strong> We ingest public repository URLs, then use GitHub’s contributor stats to collect 52-week commits, additions and deletions per developer.<br/><br/>
+                <strong>Token Conversion:</strong> Effective changed lines are converted into estimated AI coding tokens using repo-type priors, AI-native topic detection, and maintainer iteration multipliers.
               </p>
             </div>
           </div>

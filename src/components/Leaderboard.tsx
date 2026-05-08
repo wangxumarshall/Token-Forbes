@@ -17,6 +17,7 @@ export default function Leaderboard({ data }: Props) {
     switch (sourceTag) {
       case 'Direct Disclosure': return <ShieldCheck className="w-4 h-4 text-green-500" />;
       case 'API Partner': return <Database className="w-4 h-4 text-blue-500" />;
+      case 'Public GitHub Proxy': return <Database className="w-4 h-4 text-violet-400" />;
       case 'Proxy Inference':
       case 'Model Estimation': return <Activity className="w-4 h-4 text-orange-500" />;
       default: return <Info className="w-4 h-4 text-gray-500" />;
